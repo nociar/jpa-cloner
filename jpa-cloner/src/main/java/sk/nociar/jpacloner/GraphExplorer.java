@@ -48,7 +48,7 @@ import java.util.regex.Pattern;
  * <li>project.devices.interfaces</li>
  * <li>school.teachers.lessonToPupils.(key.class|value.parents)</li>
  * <li>(children.child)*.(nodeType|attributes.attributeType)</li>
- * <li>comapany.department*.(boss|employees).address.(country|city|street)</li>
+ * <li>company.department*.(boss|employees).address.(country|city|street)</li>
  * </ul>
  * 
  * <b>NOTE</b>: Entities MUST correctly implement the

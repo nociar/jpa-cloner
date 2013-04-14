@@ -1,0 +1,7 @@
+The JPA cloner project.
+
+The project allows to clone JPA entity sub-graphs. The sub-graphs are defined by string patterns, e.g.:
+  - project.devices.interfaces
+  - school.teachers.lessonToPupils.(key.class|value.parents)
+  - (children.child)*.(nodeType|attributes.attributeType)
+  - company.department*.(boss|employees).address.(country|city|street)
