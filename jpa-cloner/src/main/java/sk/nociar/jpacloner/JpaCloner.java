@@ -288,47 +288,45 @@ public class JpaCloner implements EntityExplorer {
 	}
 
 	@SuppressWarnings("unchecked")
-	private static <T> T clone(T root, JpaCloner jpaCloner, String pattern, String... patterns) {
-		GraphExplorer explorer = getExplorer(pattern);
-		explorer.explore(root, jpaCloner);
+	private static <T> T clone(T root, JpaCloner jpaCloner, String... patterns) {
 		if (patterns != null) {
-			for (String p : patterns) {
-				explorer = getExplorer(p);
+			for (String pattern : patterns) {
+				GraphExplorer explorer = getExplorer(pattern);
 				explorer.explore(root, jpaCloner);
 			}
 		}
 		return (T) jpaCloner.getClone(root);
 	}
 
-	private static <T> void cloneCollection(Collection<T> originalCollection, Collection<T> clonedCollection, String pattern, String... patterns) {
+	private static <T> void cloneCollection(Collection<T> originalCollection, Collection<T> clonedCollection, String... patterns) {
 		JpaCloner jpaCloner = new JpaCloner();
 		for (T root : originalCollection) {
-			clonedCollection.add(clone(root, jpaCloner, pattern, patterns));
+			clonedCollection.add(clone(root, jpaCloner, patterns));
 		}
 	}
 
 	/**
 	 * Clones the passed JPA entity, for description of patterns see the {@link GraphExplorer}.
 	 */
-	public static <T> T clone(T root, String pattern, String... patterns) {
-		return clone(root, new JpaCloner(), pattern, patterns);
+	public static <T> T clone(T root, String... patterns) {
+		return clone(root, new JpaCloner(), patterns);
 	}
 
 	/**
 	 * Clones the list of JPA entities, for description of patterns see the {@link GraphExplorer}.
 	 */
-	public static <T> List<T> clone(List<T> list, String pattern, String... patterns) {
+	public static <T> List<T> clone(List<T> list, String... patterns) {
 		List<T> clonedList = new ArrayList<T>(list.size());
-		cloneCollection(list, clonedList, pattern, patterns);
+		cloneCollection(list, clonedList,  patterns);
 		return clonedList;
 	}
 
 	/**
 	 * Clones the set of JPA entities, for description of patterns see the {@link GraphExplorer}.
 	 */
-	public static <T> Set<T> clone(Set<T> set, String pattern, String... patterns) {
+	public static <T> Set<T> clone(Set<T> set, String... patterns) {
 		Set<T> clonedSet = new HashSet<T>();
-		cloneCollection(set, clonedSet, pattern, patterns);
+		cloneCollection(set, clonedSet, patterns);
 		return clonedSet;
 	}
 
