@@ -276,7 +276,7 @@ public class JpaCloner implements EntityExplorer {
 		return originalToClone;
 	}
 	
-	private static Map<String, GraphExplorer> patternToExplorer = new ConcurrentHashMap<String, GraphExplorer>();
+	private static final Map<String, GraphExplorer> patternToExplorer = new ConcurrentHashMap<String, GraphExplorer>();
 	
 	private static GraphExplorer getExplorer(String pattern) {
 		GraphExplorer explorer = patternToExplorer.get(pattern);
