@@ -123,7 +123,7 @@ public abstract class JpaClonerTestSupport {
 		Node o1_2_2 = o1_2.getChildren().get(2).getChild();
 		Node o1_2_3 = o1_2.getChildren().get(3).getChild();
 		
-		GraphExplorer explorer = new GraphExplorer("(children.value.(child|parent$))*.(point|(foo|baz).bar)");
+		GraphExplorer explorer = new GraphExplorer("(children.value.(child|parent$))*.(point|(foo|baz).bar.dummy_property)");
 		JpaCloner cloner = new JpaCloner();
 		explorer.explore(o1, cloner);
 		// asserts counts

@@ -162,6 +162,19 @@ public class JpaCloner implements EntityExplorer {
 		}
 	}
 	
+	/**
+	 * Returns true if the original object has cloneable property (relation).
+	 */
+	private boolean isCloneable(Object original, String property) {
+		Class<?> jpaClass = getJpaClass(original.getClass());
+		if (jpaClass == null) {
+			return false;
+		}
+		JpaClassInfo info = getClassInfo(jpaClass);
+		
+		return info.fields.containsKey(property) && info.getters.containsKey(property) && !info.columns.contains(property);
+	}
+
 	@Override
 	public Collection<Object> explore(Object original, String property) {
 		Map<String, Collection<Object>> propertyToExplored = exploredCache.get(original);
@@ -191,6 +204,10 @@ public class JpaCloner implements EntityExplorer {
 			}
 		}
 		
+		if (!isCloneable(original, property)) {
+			return null;
+		}
+			
 		Object clone = getClone(original);
 		Object value = getProperty(original, property);
 

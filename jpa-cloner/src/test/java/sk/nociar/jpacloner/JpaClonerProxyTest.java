@@ -101,52 +101,38 @@ public class JpaClonerProxyTest {
 		support.testClone4();
 	}
 
+
+	public void testNoException() {
+		JpaCloner.clone(new NodeProxy(), "bar", "xxx", "(yyy)");
+	}
+
 	@Test(expected = RuntimeException.class)
 	public void testException1() {
-		GraphExplorer explorer = new GraphExplorer("(children.value.(child|parent$))*.bar");
-		explorer.explore(new NodeProxy(), new JpaCloner());
-	}
-
-	@Test(expected = RuntimeException.class)
-	public void testException2() {
-		GraphExplorer explorer = new GraphExplorer("(children.value.(child|parent$|point$))*.bar");
-		explorer.explore(new NodeProxy(), new JpaCloner());
-	}
-	
-	@Test(expected = RuntimeException.class)
-	public void testException3() {
-		GraphExplorer explorer = new GraphExplorer("x");
-		explorer.explore(new NodeProxy(), new JpaCloner());
-	}
-	
-
-	@Test(expected = RuntimeException.class)
-	public void testException4() {
 		new GraphExplorer("(children");
 	}
 
 	@Test(expected = RuntimeException.class)
-	public void testException5() {
+	public void testException2() {
 		new GraphExplorer("children)");
 	}
 	
 	@Test(expected = RuntimeException.class)
-	public void testException6() {
+	public void testException3() {
 		new GraphExplorer("*children");
 	}
 
 	@Test(expected = RuntimeException.class)
-	public void testException7() {
+	public void testException4() {
 		new GraphExplorer(".children");
 	}
 
 	@Test(expected = RuntimeException.class)
-	public void testException8() {
+	public void testException5() {
 		new GraphExplorer("children.");
 	}
 
 	@Test(expected = RuntimeException.class)
-	public void testException9() {
+	public void testException6() {
 		new GraphExplorer("$");
 	}
 	

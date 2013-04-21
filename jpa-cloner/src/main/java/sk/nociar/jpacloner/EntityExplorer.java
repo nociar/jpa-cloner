@@ -20,7 +20,7 @@ package sk.nociar.jpacloner;
 import java.util.Collection;
 
 /**
- * Generic explorer graph nodes. Explored objects MUST correctly
+ * Generic explorer of graph nodes. Explored objects MUST correctly
  * implement the {@link Object#equals(Object)} method and the
  * {@link Object#hashCode()} method!
  * 
