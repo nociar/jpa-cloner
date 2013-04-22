@@ -9,6 +9,7 @@ import sk.nociar.jpacloner.entities.Edge;
 import sk.nociar.jpacloner.entities.Foo;
 import sk.nociar.jpacloner.entities.Node;
 import sk.nociar.jpacloner.entities.Point;
+import sk.nociar.jpacloner.entities.WrongEntity;
 
 public class JpaClonerProxyTest {
 	
@@ -102,8 +103,14 @@ public class JpaClonerProxyTest {
 	}
 
 
+	@Test
 	public void testNoException() {
 		JpaCloner.clone(new NodeProxy(), "bar", "xxx", "(yyy)");
+	}
+
+	@Test(expected = RuntimeException.class)
+	public void testException() {
+		JpaCloner.clone(new WrongEntity());
 	}
 
 	@Test(expected = RuntimeException.class)

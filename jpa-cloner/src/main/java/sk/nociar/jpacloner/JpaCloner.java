@@ -102,6 +102,10 @@ public class JpaCloner implements EntityExplorer {
 					if (isBaseProperty(f)) {
 						columns.add(name);
 					}
+					// check if the field has corresponding getter
+					if (!getters.containsKey(name)) {
+						throw new IllegalStateException("The class: " + clazz + " does not have a getter for field: " + name);
+					}
 				}
 			}
 		}
