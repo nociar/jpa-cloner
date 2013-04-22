@@ -1,7 +1,12 @@
 The JPA cloner project.
 
 The project allows to clone JPA entity sub-graphs. The sub-graphs are defined by string patterns, e.g.:
-  - project.devices.interfaces
-  - school.teachers.lessonToPupils.(key.class|value.parents)
-  - (children.child)*.(nodeType|attributes.attributeType)
-  - company.department*.(boss|employees).address.(country|city|street)
+
+Project p = JpaCloner.clone(project, "devices.interfaces", "users.privileges");
+School s = JpaCloner.clone(school, "teachers.lessonToPupils.(key.class|value.parents)");
+Node n = JpaCloner.clone(node, "(children.child)*.(nodeType|attributes.attributeType)");
+Company c = JpaCloner.clone(company, "department+.(boss|employees).address.(country|city|street)");
+
+Requirements:
+All cloned JPA entities must use the *field* access, NOT property access.
+Each JPA entity must have a getter for each property (column, relation, embedded object, embedded collection). 
