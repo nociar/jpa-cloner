@@ -181,6 +181,9 @@ public class JpaCloner implements EntityExplorer {
 
 	@Override
 	public Collection<Object> explore(Object original, String property) {
+		if (original == null) {
+			return null;
+		}
 		Map<String, Collection<Object>> propertyToExplored = exploredCache.get(original);
 		if (propertyToExplored  == null) {
 			propertyToExplored = new HashMap<String, Collection<Object>>();
@@ -268,6 +271,9 @@ public class JpaCloner implements EntityExplorer {
 	}
 	
 	public Object getClone(Object original) {
+		if (original == null) {
+			return null;
+		}
 		Class<?> jpaClass = getJpaClass(original.getClass());
 		if (jpaClass == null) {
 			// do not clone, return the original entity (e.g. @ElementCollection)

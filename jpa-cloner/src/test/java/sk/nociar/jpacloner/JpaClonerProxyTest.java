@@ -1,5 +1,6 @@
 package sk.nociar.jpacloner;
 
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -102,6 +103,12 @@ public class JpaClonerProxyTest {
 		support.testClone4();
 	}
 
+	@Test
+	public void testNullClone() {
+		Assert.assertNull(JpaCloner.clone((Object)null, "foo.bar"));
+		JpaCloner jpaCloner = new JpaCloner();
+		Assert.assertNull(jpaCloner.getClone(null));
+	}
 
 	@Test
 	public void testNoException() {
