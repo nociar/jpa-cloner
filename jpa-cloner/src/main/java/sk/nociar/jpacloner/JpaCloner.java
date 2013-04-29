@@ -46,9 +46,39 @@ import javax.persistence.OneToOne;
 
 
 /**
- * JPA entity cloner (implementation is not thread safe). Supports cloning of
- * {@link Entity}, {@link Embeddable}, {@link List}, {@link Set},
- * {@link SortedSet}, {@link Map}, {@link SortedMap} and {@link Entry}.
+ * JpaCloner provides cloning of JPA entity subgraphs. The subgraphs are defined by string patterns,
+ * see {@link GraphExplorer} for more information. Usage examples:<br/><br/>
+ * <code>
+ * Project clonedProject = JpaCloner.clone(project, "devices.interfaces", "users.privileges");<br/>
+ * School clonedSchool = JpaCloner.clone(school, "teachers.lessonToPupils.(key.class|value.parents)");<br/>
+ * Node clonedNode = JpaCloner.clone(node, "(children.child)*.(nodeType|attributes.attributeType)");<br/>
+ * Company clonedCompany = JpaCloner.clone(company, "department+.(boss|employees).address.(country|city|street)");<br/>
+ * </code>
+ * <ul>
+ * <li>JPA entities must <b>correctly</b> implement the {@link Object#equals(Object obj)} 
+ * method and the {@link Object#hashCode()} method!</li>
+ * <li>JPA entities must use <b>field access</b>, not property access. 
+ * Each field must have a corresponding <b>getter</b>.</li>
+ * <li>Cloned entities will be instantiated as <b>raw classes</b>, not Hibernate proxy classes.
+ * Raw classes means classes annotated by {@link Entity} or {@link Embeddable}.</li>
+ * <li>Cloned entities will have <b>all basic properties</b> (i.e. column properties) populated automatically.</li>
+ * <li>Relations to neighboring entities will be populated <b>only</b> if specified by the string patterns, <code>null</code> otherwise.</li>
+ * <li>Cloned collections and maps will be the standard java.util classes:
+ * <table>
+ * <tr><th>Original</th><th></th><th>Clone</th></tr>
+ * <tr><td>{@link List}</td><td>-&gt;</td><td>{@link ArrayList}</td></tr>
+ * <tr><td>{@link SortedSet}</td><td>-&gt;</td><td>{@link TreeSet}</td></tr>
+ * <tr><td>{@link Set}</td><td>-&gt;</td><td>{@link HashSet}</td></tr>
+ * <tr><td>{@link SortedMap}</td><td>-&gt;</td><td>{@link TreeMap}</td></tr>
+ * <tr><td>{@link Map}</td><td>-&gt;</td><td>{@link HashMap}</td></tr>
+ * </table>
+ * </li>
+ * <li>Cloning of {@link Map} supports navigation via "key" and "value" properties e.g. "my.map.(key.a.b.c|value.x.y.z)"</li>
+ * <li>A JpaCloner instance is NOT thread safe; prefer the usage of static clone(...) methods, which are.</li>
+ * </ul>
+ * Please note that the cloning has also a side effect regarding the lazy loading. 
+ * All entities which will be cloned must be fetched from the DB. It is advisable
+ * (but not required) to perform the cloning inside a <b>transaction scope</b>.
  * 
  * @author Miroslav Nociar
  */
@@ -83,7 +113,7 @@ public class JpaCloner implements EntityExplorer {
 				} else if (methodName.startsWith("is") && methodName.length() > 2) {
 					propertyName = methodName.substring(2);
 				}
-				if (propertyName != null) {
+				if (propertyName != null && !propertyName.isEmpty()) {
 					propertyName = Character.toLowerCase(propertyName.charAt(0)) + propertyName.substring(1);
 					getters.put(propertyName, m);
 				}
@@ -237,7 +267,7 @@ public class JpaCloner implements EntityExplorer {
 				clonedCollection = new HashSet();
 			} else if (explored instanceof List) {
 				// create an array list
-				clonedCollection = new ArrayList();
+				clonedCollection = new ArrayList(explored.size());
 			} else {
 				throw new IllegalArgumentException("Unsupported collection class: " + explored.getClass());
 			}
