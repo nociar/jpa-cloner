@@ -3,6 +3,10 @@ package sk.nociar.jpacloner;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
+
+import java.util.HashSet;
+import java.util.Set;
+
 import sk.nociar.jpacloner.entities.Bar;
 import sk.nociar.jpacloner.entities.Baz;
 import sk.nociar.jpacloner.entities.Edge;
@@ -110,6 +114,14 @@ public abstract class JpaClonerTestSupport {
 		assertNotSame(original.getPoint(), clone.getPoint());
 		assertEquals(original.getPoint().getX(), clone.getPoint().getX()); 
 		assertEquals(original.getPoint().getY(), clone.getPoint().getY());
+		// child edges
+		for (Integer position : original.getChildren().keySet()) {
+			Edge originalEdge = original.getChildren().get(position);
+			Edge clonedEdge = clone.getChildren().get(position);
+			assertEquals(originalEdge, clonedEdge);
+			assertNotSame(originalEdge, clonedEdge);
+			assertSame(clone, clonedEdge.getParent());
+		}
 	}
 
 	public void testClone1() {
@@ -123,7 +135,7 @@ public abstract class JpaClonerTestSupport {
 		Node o1_2_2 = o1_2.getChildren().get(2).getChild();
 		Node o1_2_3 = o1_2.getChildren().get(3).getChild();
 		
-		GraphExplorer explorer = new GraphExplorer("(children.value.(child|parent$))*.(point|(foo|baz).bar.dummy_property)");
+		GraphExplorer explorer = new GraphExplorer("(children.value.child)*.(point|(foo|baz).bar.dummy_property)");
 		JpaCloner cloner = new JpaCloner();
 		explorer.explore(o1, cloner);
 		// asserts counts
@@ -167,7 +179,7 @@ public abstract class JpaClonerTestSupport {
 	}
 
 	public void testClone2() {
-		GraphExplorer explorer = new GraphExplorer("(children.value.(child|parent$))*.(foo|baz)");
+		GraphExplorer explorer = new GraphExplorer("(children.value.child)*.(foo|baz)");
 		JpaCloner cloner = new JpaCloner();
 		explorer.explore(getOriginal(), cloner);
 		// do some asserts
@@ -180,7 +192,7 @@ public abstract class JpaClonerTestSupport {
 	}
 
 	public void testClone3() {
-		GraphExplorer explorer = new GraphExplorer("(children.value.(child|parent$))*.(foo.bar|baz.bar)");
+		GraphExplorer explorer = new GraphExplorer("(children.value.child)*.(foo.bar|baz.bar)");
 		JpaCloner cloner = new JpaCloner();
 		explorer.explore(getOriginal(), cloner);
 		// do some asserts
@@ -193,7 +205,7 @@ public abstract class JpaClonerTestSupport {
 	}
 
 	public void testClone4() {
-		GraphExplorer explorer = new GraphExplorer("(children.value.(child|parent$))*.(baz.bar)");
+		GraphExplorer explorer = new GraphExplorer("(parents.parent)*|(children.value.child)*.(baz$.bar)");
 		JpaCloner cloner = new JpaCloner();
 		explorer.explore(getOriginal(), cloner);
 		// do some asserts
@@ -202,7 +214,19 @@ public abstract class JpaClonerTestSupport {
 		assertCloned(cloner, Point.class, 0);
 		assertCloned(cloner, Foo.class, 0);
 		assertCloned(cloner, Baz.class, 2);
-		assertCloned(cloner, Bar.class, 1);
+		assertCloned(cloner, Bar.class, 0);
+		
+		assertParents((Node) cloner.getClone(getOriginal()), new HashSet<Edge>());
+	}
+	
+	private void assertParents(Node node, Set<Edge> asserted) {
+		for (Edge edge : node.getParents()) {
+			if (!asserted.contains(edge)) {
+				asserted.add(edge);
+				assertSame(node, edge.getChild());
+				assertParents(edge.getParent(), asserted);
+			}
+		}
 	}
 	
 	private Node createNode(String name, int x, int y) {

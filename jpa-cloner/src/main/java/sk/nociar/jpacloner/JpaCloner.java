@@ -96,6 +96,7 @@ public class JpaCloner implements EntityExplorer {
 		final List<String> columns = new ArrayList<String>();
 		final Map<String, Field> fields = new HashMap<String, Field>();
 		final Map<String, Method> getters = new HashMap<String, Method>();
+		final Map<String, String> mappedBy = new HashMap<String, String>();
 		
 		JpaClassInfo(Class<?> clazz) {
 			if (clazz != getJpaClass(clazz)) {
@@ -131,6 +132,14 @@ public class JpaCloner implements EntityExplorer {
 					fields.put(name, f);
 					if (isBaseProperty(f)) {
 						columns.add(name);
+					} else {
+						OneToMany oneToMany = f.getAnnotation(OneToMany.class);
+						if (oneToMany != null) {
+							String mappedName = oneToMany.mappedBy();
+							if (mappedName != null && !mappedName.trim().isEmpty()) {
+								mappedBy.put(name, mappedName);
+							}
+						}
 					}
 					// check if the field has corresponding getter
 					if (!getters.containsKey(name)) {
@@ -197,7 +206,7 @@ public class JpaCloner implements EntityExplorer {
 	}
 	
 	/**
-	 * Returns true if the original object has cloneable property (relation).
+	 * Returns <code>true</code> if the original object has cloneable property (relation).
 	 */
 	private boolean isCloneable(Object original, String property) {
 		Class<?> jpaClass = getJpaClass(original.getClass());
@@ -208,7 +217,18 @@ public class JpaCloner implements EntityExplorer {
 		
 		return info.fields.containsKey(property) && info.getters.containsKey(property) && !info.columns.contains(property);
 	}
-
+	
+	/**
+	 * Returns the mappedBy for the property or <code>null.  
+	 */
+	private String getMappedBy(Object original, String property) {
+		Class<?> jpaClass = getJpaClass(original.getClass());
+		if (jpaClass == null) {
+			return "";
+		}
+		return getClassInfo(jpaClass).mappedBy.get(property);
+	}
+	
 	@Override
 	public Collection<Object> explore(Object original, String property) {
 		if (original == null) {
@@ -252,6 +272,7 @@ public class JpaCloner implements EntityExplorer {
 			return null;
 		}
 
+		String mappedBy = getMappedBy(original, property);
 		Object clonedValue;
 		Collection explored;
 		
@@ -272,7 +293,12 @@ public class JpaCloner implements EntityExplorer {
 				throw new IllegalArgumentException("Unsupported collection class: " + explored.getClass());
 			}
 			for (Object o : explored) {
-				clonedCollection.add(getClone(o));
+				Object c = getClone(o);
+				if (mappedBy != null && c != o) {
+					// handle OneToMany#mappedBy()
+					setProperty(c, mappedBy, clone);
+				}
+				clonedCollection.add(c);
 			}
 			clonedValue = clonedCollection;
 		} else if (value instanceof Map) {
@@ -286,7 +312,13 @@ public class JpaCloner implements EntityExplorer {
 				clonedMap = new HashMap();
 			}
 			for (Entry<Object, Object> entry : entries) {
-				clonedMap.put(getClone(entry.getKey()), getClone(entry.getValue()));
+				Object mapKey = getClone(entry.getKey());
+				Object mapValue = getClone(entry.getValue());
+				if (mappedBy != null && mapValue != entry.getValue()) {
+					// handle OneToMany#mappedBy()
+					setProperty(mapValue, mappedBy, clone);
+				}
+				clonedMap.put(mapKey, mapValue);
 			}
 			clonedValue = clonedMap;
 		} else {
