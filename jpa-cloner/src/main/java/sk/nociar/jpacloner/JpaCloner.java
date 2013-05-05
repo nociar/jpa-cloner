@@ -219,12 +219,12 @@ public class JpaCloner implements EntityExplorer {
 	}
 	
 	/**
-	 * Returns the mappedBy for the property or <code>null.  
+	 * Returns the mappedBy for the property or <code>null</code>.  
 	 */
 	private String getMappedBy(Object original, String property) {
 		Class<?> jpaClass = getJpaClass(original.getClass());
 		if (jpaClass == null) {
-			return "";
+			return null;
 		}
 		return getClassInfo(jpaClass).mappedBy.get(property);
 	}
