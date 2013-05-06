@@ -46,9 +46,6 @@ public class JpaClonerProxyTest {
 		}
 	}
 
-	private static class PointProxy extends Point {
-	}
-	
 	private JpaClonerTestSupport support;
 	
 	@Before
@@ -64,7 +61,7 @@ public class JpaClonerProxyTest {
 			}
 			@Override
 			protected Point createPoint() {
-				return new PointProxy();
+				return new Point(1, 2);
 			}
 			@Override
 			protected Foo createFoo() {

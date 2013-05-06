@@ -72,7 +72,7 @@ public class JpaClonerTest {
 			}
 			@Override
 			protected Point createPoint() {
-				return new Point();
+				return new Point(1, 2);
 			}
 			@Override
 			protected Foo createFoo() {

@@ -17,6 +17,7 @@
  */
 package sk.nociar.jpacloner;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -93,6 +94,7 @@ public class JpaCloner implements EntityExplorer {
 	 * @author Miroslav Nociar
 	 */
 	private static class JpaClassInfo {
+		final Constructor<?> constructor;
 		final List<String> columns = new ArrayList<String>();
 		final Map<String, Field> fields = new HashMap<String, Field>();
 		final Map<String, Method> getters = new HashMap<String, Method>();
@@ -101,6 +103,13 @@ public class JpaCloner implements EntityExplorer {
 		JpaClassInfo(Class<?> clazz) {
 			if (clazz != getJpaClass(clazz)) {
 				throw new IllegalArgumentException("Not a JPA class: " + clazz);
+			}
+			// find default constructor
+			try {
+				constructor = clazz.getDeclaredConstructor();
+				constructor.setAccessible(true);
+			} catch (NoSuchMethodException e) {
+				throw new IllegalStateException("Unable to find default constructor for class: " + clazz, e);
 			}
 			// getters
 			for (Method m : clazz.getMethods()) {
@@ -346,13 +355,14 @@ public class JpaCloner implements EntityExplorer {
 		if (clone != null) {
 			return clone;
 		}
+		JpaClassInfo classInfo = getClassInfo(jpaClass);
 		try {
-			clone = jpaClass.newInstance();
+			clone = classInfo.constructor.newInstance();
 		} catch (Exception e) {
 			throw new IllegalStateException("Unable to clone: " + original, e);
 		}
 		// clone all columns
-		for (String property : getClassInfo(jpaClass).columns) {
+		for (String property : classInfo.columns) {
 			Object value = getProperty(original, property);
 			setProperty(clone, property, value);
 		}
