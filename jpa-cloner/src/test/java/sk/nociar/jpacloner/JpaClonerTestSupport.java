@@ -1,13 +1,18 @@
 package sk.nociar.jpacloner;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 
 import java.util.HashSet;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import sk.nociar.jpacloner.entities.Bar;
+import sk.nociar.jpacloner.entities.BaseEntity;
 import sk.nociar.jpacloner.entities.Baz;
 import sk.nociar.jpacloner.entities.Edge;
 import sk.nociar.jpacloner.entities.Foo;
@@ -217,6 +222,33 @@ public abstract class JpaClonerTestSupport {
 		assertCloned(cloner, Bar.class, 0);
 		
 		assertParents((Node) cloner.getClone(getOriginal()), new HashSet<Edge>());
+	}
+	
+	public void testClone5() {
+		GraphExplorer explorer = new GraphExplorer("(children.value.child)*.(foo|baz).bar");
+		JpaCloner cloner = new JpaCloner(new JpaPropertyFilter() {
+			@Override
+			public boolean isCloned(Object entity, String property) {
+				return !"id".equals(property);
+			}
+		});
+		
+		explorer.explore(getOriginal(), cloner);
+		// do some asserts
+		assertCloned(cloner, Node.class, 9);
+		assertCloned(cloner, Edge.class, 10);
+		assertCloned(cloner, Point.class, 0);
+		assertCloned(cloner, Foo.class, 2);
+		assertCloned(cloner, Baz.class, 2);
+		assertCloned(cloner, Bar.class, 1);
+		// assert that each cloned object has null id
+		for (Entry<Object, Object> entry : cloner.getOriginalToClone().entrySet()) {
+			BaseEntity original = (BaseEntity) entry.getKey();
+			BaseEntity clone = (BaseEntity) entry.getValue();
+			assertNotNull(original.getId());
+			assertNull(clone.getId());
+			assertNotEquals(original, clone);
+		}		
 	}
 	
 	private void assertParents(Node node, Set<Edge> asserted) {

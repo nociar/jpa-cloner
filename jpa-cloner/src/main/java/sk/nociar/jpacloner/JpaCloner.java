@@ -62,7 +62,8 @@ import javax.persistence.OneToOne;
  * Each field must have a corresponding <b>getter</b>.</li>
  * <li>Cloned entities will be instantiated as <b>raw classes</b>, not Hibernate proxy classes.
  * Raw classes means classes annotated by {@link Entity} or {@link Embeddable}.</li>
- * <li>Cloned entities will have <b>all basic properties</b> (i.e. column properties) populated automatically.</li>
+ * <li>Cloned entities will have all basic properties (i.e. columns) populated by default. 
+ * Advanced control over the basic property cloning is supported via the {@link JpaPropertyFilter}.</li>
  * <li>Relations to neighboring entities will be populated <b>only</b> if specified by the string patterns, <code>null</code> otherwise.</li>
  * <li>Cloned collections and maps will be the standard java.util classes:
  * <table>
@@ -87,6 +88,15 @@ public class JpaCloner implements EntityExplorer {
 
 	private final Map<Object, Object> originalToClone = new HashMap<Object, Object>();
 	private final Map<Object, Map<String, Collection<Object>>> exploredCache = new HashMap<Object, Map<String, Collection<Object>>>();
+	
+	private final JpaPropertyFilter propertyFilter;
+	
+	private static final JpaPropertyFilter defaultPropertyFilter = new JpaPropertyFilter() {
+		@Override
+		public boolean isCloned(Object entity, String property) {
+			return true;
+		}
+	};
 	
 	/**
 	 * Info about JPA class.
@@ -212,6 +222,14 @@ public class JpaCloner implements EntityExplorer {
 		} catch (IllegalAccessException e) {
 			throw new IllegalStateException("Set problem.", e);
 		}
+	}
+	
+	public JpaCloner() {
+		this(defaultPropertyFilter);
+	}
+	
+	public JpaCloner(JpaPropertyFilter propertyFilter) {
+		this.propertyFilter = propertyFilter;
 	}
 	
 	/**
@@ -361,10 +379,12 @@ public class JpaCloner implements EntityExplorer {
 		} catch (Exception e) {
 			throw new IllegalStateException("Unable to clone: " + original, e);
 		}
-		// clone all columns
+		// clone columns
 		for (String property : classInfo.columns) {
-			Object value = getProperty(original, property);
-			setProperty(clone, property, value);
+			if (propertyFilter.isCloned(original, property)) {
+				Object value = getProperty(original, property);
+				setProperty(clone, property, value);
+			}
 		}
 		// put in the cache
 		originalToClone.put(original, clone);
@@ -397,8 +417,8 @@ public class JpaCloner implements EntityExplorer {
 		return (T) jpaCloner.getClone(root);
 	}
 
-	private static <T> void cloneCollection(Collection<T> originalCollection, Collection<T> clonedCollection, String... patterns) {
-		JpaCloner jpaCloner = new JpaCloner();
+	private static <T> void cloneCollection(Collection<T> originalCollection, Collection<T> clonedCollection, JpaPropertyFilter propertyFilter, String... patterns) {
+		JpaCloner jpaCloner = new JpaCloner(propertyFilter);
 		for (T root : originalCollection) {
 			clonedCollection.add(clone(root, jpaCloner, patterns));
 		}
@@ -407,26 +427,46 @@ public class JpaCloner implements EntityExplorer {
 	/**
 	 * Clones the passed JPA entity, for description of patterns see the {@link GraphExplorer}.
 	 */
-	public static <T> T clone(T root, String... patterns) {
-		return clone(root, new JpaCloner(), patterns);
+	public static <T> T clone(T root, JpaPropertyFilter propertyFilter, String... patterns) {
+		return clone(root, new JpaCloner(propertyFilter), patterns);
 	}
 
 	/**
 	 * Clones the list of JPA entities, for description of patterns see the {@link GraphExplorer}.
 	 */
-	public static <T> List<T> clone(List<T> list, String... patterns) {
+	public static <T> List<T> clone(List<T> list, JpaPropertyFilter propertyFilter, String... patterns) {
 		List<T> clonedList = new ArrayList<T>(list.size());
-		cloneCollection(list, clonedList,  patterns);
+		cloneCollection(list, clonedList, propertyFilter, patterns);
 		return clonedList;
 	}
 
 	/**
 	 * Clones the set of JPA entities, for description of patterns see the {@link GraphExplorer}.
 	 */
-	public static <T> Set<T> clone(Set<T> set, String... patterns) {
+	public static <T> Set<T> clone(Set<T> set, JpaPropertyFilter propertyFilter, String... patterns) {
 		Set<T> clonedSet = new HashSet<T>();
-		cloneCollection(set, clonedSet, patterns);
+		cloneCollection(set, clonedSet, propertyFilter, patterns);
 		return clonedSet;
 	}
 
+	/**
+	 * Clones the passed JPA entity, for description of patterns see the {@link GraphExplorer}.
+	 */
+	public static <T> T clone(T root, String... patterns) {
+		return clone(root, defaultPropertyFilter, patterns);
+	}
+
+	/**
+	 * Clones the list of JPA entities, for description of patterns see the {@link GraphExplorer}.
+	 */
+	public static <T> List<T> clone(List<T> list, String... patterns) {
+		return clone(list, defaultPropertyFilter, patterns);
+	}
+
+	/**
+	 * Clones the set of JPA entities, for description of patterns see the {@link GraphExplorer}.
+	 */
+	public static <T> Set<T> clone(Set<T> set, String... patterns) {
+		return clone(set, defaultPropertyFilter, patterns);
+	}	
 }
