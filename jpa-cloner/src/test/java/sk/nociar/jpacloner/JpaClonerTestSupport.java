@@ -259,7 +259,7 @@ public abstract class JpaClonerTestSupport {
 	
 	public void testClone6() {
 		final Set<Object> entities = new HashSet<Object>();
-		Node clone = JpaCloner.cloneByFilter(getOriginal(), new JpaPropertyFilter() {
+		JpaCloner.cloneByFilter(getOriginal(), new JpaPropertyFilter() {
 			@Override
 			public boolean isCloned(Object entity, String property) {
 				entities.add(entity);
@@ -274,6 +274,23 @@ public abstract class JpaClonerTestSupport {
 		assertCloned(entities, Foo.class, 2);
 		assertCloned(entities, Baz.class, 2);
 		assertCloned(entities, Bar.class, 1);
+		
+		entities.clear();
+		JpaCloner.cloneByFilter(getOriginal(), new JpaPropertyFilter() {
+			@Override
+			public boolean isCloned(Object entity, String property) {
+				entities.add(entity);
+				return !"point".equals(property) && !"bar".equals(property);
+			}
+		});
+		
+		// do some asserts
+		assertCloned(entities, Node.class, 9);
+		assertCloned(entities, Edge.class, 10);
+		assertCloned(entities, Point.class, 0);
+		assertCloned(entities, Foo.class, 2);
+		assertCloned(entities, Baz.class, 2);
+		assertCloned(entities, Bar.class, 0);
 	}
 	
 	private void assertParents(Node node, Set<Edge> asserted) {
