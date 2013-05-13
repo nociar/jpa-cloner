@@ -106,6 +106,11 @@ public class JpaClonerProxyTest {
 	}
 
 	@Test
+	public void testClone6() {
+		support.testClone6();
+	}
+	
+	@Test
 	public void testNullClone() {
 		Assert.assertNull(JpaCloner.clone((Object)null, "foo.bar"));
 		JpaCloner jpaCloner = new JpaCloner();

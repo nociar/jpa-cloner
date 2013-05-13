@@ -7,6 +7,7 @@ import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -84,10 +85,10 @@ public abstract class JpaClonerTestSupport {
 	/**
 	 * Helper method for assertions.
 	 */
-	private void assertCloned(JpaCloner cloner, Class<?> clazz, int expected) {
+	private void assertCloned(Collection<Object> entities, Class<?> clazz, int expected) {
 		int count = 0;
-		for (Object e : cloner.getOriginalToClone().values()) {
-			if (clazz == e.getClass()) {
+		for (Object e : entities) {
+			if (clazz.isAssignableFrom(e.getClass())) {
 				count++;
 			}
 		}
@@ -144,12 +145,13 @@ public abstract class JpaClonerTestSupport {
 		JpaCloner cloner = new JpaCloner();
 		explorer.explore(o1, cloner);
 		// asserts counts
-		assertCloned(cloner, Node.class, 9);
-		assertCloned(cloner, Edge.class, 10);
-		assertCloned(cloner, Point.class, 9);
-		assertCloned(cloner, Foo.class, 2);
-		assertCloned(cloner, Baz.class, 2);
-		assertCloned(cloner, Bar.class, 1);
+		Collection<Object> entities = cloner.getOriginalToClone().values();
+		assertCloned(entities, Node.class, 9);
+		assertCloned(entities, Edge.class, 10);
+		assertCloned(entities, Point.class, 9);
+		assertCloned(entities, Foo.class, 2);
+		assertCloned(entities, Baz.class, 2);
+		assertCloned(entities, Bar.class, 1);
 		// assert object clones
 		Node c1 = (Node) cloner.getClone(n1);
 		Node c1_1 = c1.getChildren().get(1).getChild();
@@ -188,12 +190,13 @@ public abstract class JpaClonerTestSupport {
 		JpaCloner cloner = new JpaCloner();
 		explorer.explore(getOriginal(), cloner);
 		// do some asserts
-		assertCloned(cloner, Node.class, 9);
-		assertCloned(cloner, Edge.class, 10);
-		assertCloned(cloner, Point.class, 0);
-		assertCloned(cloner, Foo.class, 2);
-		assertCloned(cloner, Baz.class, 2);
-		assertCloned(cloner, Bar.class, 0);
+		Collection<Object> entities = cloner.getOriginalToClone().values();
+		assertCloned(entities, Node.class, 9);
+		assertCloned(entities, Edge.class, 10);
+		assertCloned(entities, Point.class, 0);
+		assertCloned(entities, Foo.class, 2);
+		assertCloned(entities, Baz.class, 2);
+		assertCloned(entities, Bar.class, 0);
 	}
 
 	public void testClone3() {
@@ -201,12 +204,13 @@ public abstract class JpaClonerTestSupport {
 		JpaCloner cloner = new JpaCloner();
 		explorer.explore(getOriginal(), cloner);
 		// do some asserts
-		assertCloned(cloner, Node.class, 9);
-		assertCloned(cloner, Edge.class, 10);
-		assertCloned(cloner, Point.class, 0);
-		assertCloned(cloner, Foo.class, 2);
-		assertCloned(cloner, Baz.class, 2);
-		assertCloned(cloner, Bar.class, 1);
+		Collection<Object> entities = cloner.getOriginalToClone().values();
+		assertCloned(entities, Node.class, 9);
+		assertCloned(entities, Edge.class, 10);
+		assertCloned(entities, Point.class, 0);
+		assertCloned(entities, Foo.class, 2);
+		assertCloned(entities, Baz.class, 2);
+		assertCloned(entities, Bar.class, 1);
 	}
 
 	public void testClone4() {
@@ -214,12 +218,13 @@ public abstract class JpaClonerTestSupport {
 		JpaCloner cloner = new JpaCloner();
 		explorer.explore(getOriginal(), cloner);
 		// do some asserts
-		assertCloned(cloner, Node.class, 9);
-		assertCloned(cloner, Edge.class, 10);
-		assertCloned(cloner, Point.class, 0);
-		assertCloned(cloner, Foo.class, 0);
-		assertCloned(cloner, Baz.class, 2);
-		assertCloned(cloner, Bar.class, 0);
+		Collection<Object> entities = cloner.getOriginalToClone().values();
+		assertCloned(entities, Node.class, 9);
+		assertCloned(entities, Edge.class, 10);
+		assertCloned(entities, Point.class, 0);
+		assertCloned(entities, Foo.class, 0);
+		assertCloned(entities, Baz.class, 2);
+		assertCloned(entities, Bar.class, 0);
 		
 		assertParents((Node) cloner.getClone(getOriginal()), new HashSet<Edge>());
 	}
@@ -235,12 +240,13 @@ public abstract class JpaClonerTestSupport {
 		
 		explorer.explore(getOriginal(), cloner);
 		// do some asserts
-		assertCloned(cloner, Node.class, 9);
-		assertCloned(cloner, Edge.class, 10);
-		assertCloned(cloner, Point.class, 0);
-		assertCloned(cloner, Foo.class, 2);
-		assertCloned(cloner, Baz.class, 2);
-		assertCloned(cloner, Bar.class, 1);
+		Collection<Object> entities = cloner.getOriginalToClone().values();
+		assertCloned(entities, Node.class, 9);
+		assertCloned(entities, Edge.class, 10);
+		assertCloned(entities, Point.class, 0);
+		assertCloned(entities, Foo.class, 2);
+		assertCloned(entities, Baz.class, 2);
+		assertCloned(entities, Bar.class, 1);
 		// assert that each cloned object has null id
 		for (Entry<Object, Object> entry : cloner.getOriginalToClone().entrySet()) {
 			BaseEntity original = (BaseEntity) entry.getKey();
@@ -249,6 +255,25 @@ public abstract class JpaClonerTestSupport {
 			assertNull(clone.getId());
 			assertNotEquals(original, clone);
 		}		
+	}
+	
+	public void testClone6() {
+		final Set<Object> entities = new HashSet<Object>();
+		Node clone = JpaCloner.cloneByFilter(getOriginal(), new JpaPropertyFilter() {
+			@Override
+			public boolean isCloned(Object entity, String property) {
+				entities.add(entity);
+				return !"id".equals(property);
+			}
+		});
+		
+		// do some asserts
+		assertCloned(entities, Node.class, 9);
+		assertCloned(entities, Edge.class, 10);
+		assertCloned(entities, Point.class, 9);
+		assertCloned(entities, Foo.class, 2);
+		assertCloned(entities, Baz.class, 2);
+		assertCloned(entities, Bar.class, 1);
 	}
 	
 	private void assertParents(Node node, Set<Edge> asserted) {

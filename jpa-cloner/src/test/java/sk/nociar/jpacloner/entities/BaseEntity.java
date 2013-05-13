@@ -30,8 +30,8 @@ public class BaseEntity {
 			return true;
 		}
 		// get JPA classes (non-proxy) 
-		Class<?> thisClass = JpaCloner.getJpaClass(this.getClass());
-		Class<?> otherClass = JpaCloner.getJpaClass(other.getClass());
+		Class<?> thisClass = JpaCloner.getJpaClass(this);
+		Class<?> otherClass = JpaCloner.getJpaClass(other);
 
 		if (thisClass != otherClass) {
 			return false;

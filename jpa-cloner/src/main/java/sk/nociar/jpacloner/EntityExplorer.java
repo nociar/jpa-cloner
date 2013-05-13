@@ -20,7 +20,7 @@ package sk.nociar.jpacloner;
 import java.util.Collection;
 
 /**
- * Generic explorer of graph nodes. Explored objects MUST correctly
+ * Generic explorer of entities (graph nodes). Explored objects MUST correctly
  * implement the {@link Object#equals(Object)} method and the
  * {@link Object#hashCode()} method!
  * 
@@ -32,12 +32,12 @@ public interface EntityExplorer {
 	/**
 	 * Explore a property of an entity, may return <code>null</code>.
 	 * 
-	 * @param node
-	 *            the node (entity)
-	 * @param edge
-	 *            the edge (relation, property)
-	 * @return a collection of explored objects
+	 * @param entity
+	 *            the entity (node)
+	 * @param property
+	 *            the property (edge)
+	 * @return a collection of explored entities or <code>null</code>.
 	 */
-	public Collection<Object> explore(Object node, String edge);
+	public Collection<Object> explore(Object entity, String property);
 
 }

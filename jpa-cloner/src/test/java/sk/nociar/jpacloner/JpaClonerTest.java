@@ -142,6 +142,12 @@ public class JpaClonerTest {
 
 	@Test
 	@Transactional
+	public void testClone6() {
+		support.testClone6();
+	}
+	
+	@Test
+	@Transactional
 	public void testCloneList() {
 		TypedQuery<Node> q = em.createQuery("select n from Node n", Node.class);
 		List<Node> nodes = JpaCloner.clone(q.getResultList(), "point", "(foo|baz).bar");
