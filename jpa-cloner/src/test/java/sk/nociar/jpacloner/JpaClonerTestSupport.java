@@ -259,7 +259,7 @@ public abstract class JpaClonerTestSupport {
 	
 	public void testClone6() {
 		final Set<Object> entities = new HashSet<Object>();
-		JpaCloner.cloneByFilter(getOriginal(), new JpaPropertyFilter() {
+		JpaCloner.deepClone(getOriginal(), new JpaPropertyFilter() {
 			@Override
 			public boolean isCloned(Object entity, String property) {
 				entities.add(entity);
@@ -276,7 +276,7 @@ public abstract class JpaClonerTestSupport {
 		assertCloned(entities, Bar.class, 1);
 		
 		entities.clear();
-		JpaCloner.cloneByFilter(getOriginal(), new JpaPropertyFilter() {
+		JpaCloner.deepClone(getOriginal(), new JpaPropertyFilter() {
 			@Override
 			public boolean isCloned(Object entity, String property) {
 				entities.add(entity);
