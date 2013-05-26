@@ -142,8 +142,8 @@ public class JpaClonerTest {
 
 	@Test
 	@Transactional
-	public void testClone6() {
-		support.testClone6();
+	public void testExplore() {
+		support.testExplore();
 	}
 	
 	@Test

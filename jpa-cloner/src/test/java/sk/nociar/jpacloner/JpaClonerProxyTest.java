@@ -11,6 +11,7 @@ import sk.nociar.jpacloner.entities.Foo;
 import sk.nociar.jpacloner.entities.Node;
 import sk.nociar.jpacloner.entities.Point;
 import sk.nociar.jpacloner.entities.WrongEntity;
+import sk.nociar.jpacloner.graphs.GraphExplorer;
 
 public class JpaClonerProxyTest {
 	
@@ -106,8 +107,8 @@ public class JpaClonerProxyTest {
 	}
 
 	@Test
-	public void testClone6() {
-		support.testClone6();
+	public void testExplore() {
+		support.testExplore();
 	}
 	
 	@Test

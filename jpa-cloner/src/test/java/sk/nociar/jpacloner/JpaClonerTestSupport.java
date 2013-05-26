@@ -1,15 +1,11 @@
 package sk.nociar.jpacloner;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 
-import java.util.Collection;
 import java.util.HashSet;
-import java.util.Map.Entry;
 import java.util.Set;
 
 import sk.nociar.jpacloner.entities.Bar;
@@ -19,6 +15,7 @@ import sk.nociar.jpacloner.entities.Edge;
 import sk.nociar.jpacloner.entities.Foo;
 import sk.nociar.jpacloner.entities.Node;
 import sk.nociar.jpacloner.entities.Point;
+import sk.nociar.jpacloner.graphs.PropertyFilter;
 
 public abstract class JpaClonerTestSupport {
 	private Node n1;
@@ -85,13 +82,8 @@ public abstract class JpaClonerTestSupport {
 	/**
 	 * Helper method for assertions.
 	 */
-	private void assertCloned(Collection<Object> entities, Class<?> clazz, int expected) {
-		int count = 0;
-		for (Object e : entities) {
-			if (clazz.isAssignableFrom(e.getClass())) {
-				count++;
-			}
-		}
+	private void assertCloned(JpaExplorer jpaExplorer, Class<?> clazz, int expected) {
+		int count = jpaExplorer.getEntities(clazz).size();
 		assertEquals(expected, count);
 	}
 	
@@ -130,6 +122,13 @@ public abstract class JpaClonerTestSupport {
 		}
 	}
 
+	private static final PropertyFilter defaultPropertyFilter = new PropertyFilter() {
+		@Override
+		public boolean test(Object entity, String property) {
+			return true;
+		}
+	};
+
 	public void testClone1() {
 		Node o1 = getOriginal();
 		Node o1_1 = o1.getChildren().get(1).getChild();
@@ -141,19 +140,16 @@ public abstract class JpaClonerTestSupport {
 		Node o1_2_2 = o1_2.getChildren().get(2).getChild();
 		Node o1_2_3 = o1_2.getChildren().get(3).getChild();
 		
-		GraphExplorer explorer = new GraphExplorer("(children.value.child)*.(point|(foo|baz).bar.dummy_property)");
-		JpaCloner cloner = new JpaCloner();
-		explorer.explore(o1, cloner);
+		Node c1 = JpaCloner.clone(o1, "(children.value.child)*.(point|(foo|baz).bar.dummy_property)");
+		JpaExplorer jpaExplorer = JpaExplorer.doExplore(c1, defaultPropertyFilter);
 		// asserts counts
-		Collection<Object> entities = cloner.getOriginalToClone().values();
-		assertCloned(entities, Node.class, 9);
-		assertCloned(entities, Edge.class, 10);
-		assertCloned(entities, Point.class, 9);
-		assertCloned(entities, Foo.class, 2);
-		assertCloned(entities, Baz.class, 2);
-		assertCloned(entities, Bar.class, 1);
+		assertCloned(jpaExplorer, Node.class, 9);
+		assertCloned(jpaExplorer, Edge.class, 10);
+		assertCloned(jpaExplorer, Point.class, 9);
+		assertCloned(jpaExplorer, Foo.class, 2);
+		assertCloned(jpaExplorer, Baz.class, 2);
+		assertCloned(jpaExplorer, Bar.class, 1);
 		// assert object clones
-		Node c1 = (Node) cloner.getClone(n1);
 		Node c1_1 = c1.getChildren().get(1).getChild();
 		Node c1_1_1 = c1_1.getChildren().get(1).getChild();
 		Node c1_1_1_1 = c1_1_1.getChildren().get(1).getChild();
@@ -186,111 +182,109 @@ public abstract class JpaClonerTestSupport {
 	}
 
 	public void testClone2() {
-		GraphExplorer explorer = new GraphExplorer("(children.value.child)*.(foo|baz)");
-		JpaCloner cloner = new JpaCloner();
-		explorer.explore(getOriginal(), cloner);
+		Node clone = JpaCloner.clone(getOriginal(), "(children.value.child)*.(foo|baz)");
+		JpaExplorer jpaExplorer = JpaExplorer.doExplore(clone, defaultPropertyFilter);
 		// do some asserts
-		Collection<Object> entities = cloner.getOriginalToClone().values();
-		assertCloned(entities, Node.class, 9);
-		assertCloned(entities, Edge.class, 10);
-		assertCloned(entities, Point.class, 0);
-		assertCloned(entities, Foo.class, 2);
-		assertCloned(entities, Baz.class, 2);
-		assertCloned(entities, Bar.class, 0);
+		assertCloned(jpaExplorer, Node.class, 9);
+		assertCloned(jpaExplorer, Edge.class, 10);
+		assertCloned(jpaExplorer, Point.class, 0);
+		assertCloned(jpaExplorer, Foo.class, 2);
+		assertCloned(jpaExplorer, Baz.class, 2);
+		assertCloned(jpaExplorer, Bar.class, 0);
 	}
 
 	public void testClone3() {
-		GraphExplorer explorer = new GraphExplorer("(children.value.child)*.(foo.bar|baz.bar)");
-		JpaCloner cloner = new JpaCloner();
-		explorer.explore(getOriginal(), cloner);
+		Node clone = JpaCloner.clone(getOriginal(), "(children.value.child)*.(foo.bar|baz.bar)");
+		JpaExplorer jpaExplorer = JpaExplorer.doExplore(clone, defaultPropertyFilter);
 		// do some asserts
-		Collection<Object> entities = cloner.getOriginalToClone().values();
-		assertCloned(entities, Node.class, 9);
-		assertCloned(entities, Edge.class, 10);
-		assertCloned(entities, Point.class, 0);
-		assertCloned(entities, Foo.class, 2);
-		assertCloned(entities, Baz.class, 2);
-		assertCloned(entities, Bar.class, 1);
+		assertCloned(jpaExplorer, Node.class, 9);
+		assertCloned(jpaExplorer, Edge.class, 10);
+		assertCloned(jpaExplorer, Point.class, 0);
+		assertCloned(jpaExplorer, Foo.class, 2);
+		assertCloned(jpaExplorer, Baz.class, 2);
+		assertCloned(jpaExplorer, Bar.class, 1);
 	}
 
 	public void testClone4() {
-		GraphExplorer explorer = new GraphExplorer("(parents.parent)*|(children.value.child)*.(baz$.bar)");
-		JpaCloner cloner = new JpaCloner();
-		explorer.explore(getOriginal(), cloner);
+		Node clone = JpaCloner.clone(getOriginal(), "(parents.parent)*|(children.value.child)*.(baz$.bar)");
+		JpaExplorer jpaExplorer = JpaExplorer.doExplore(clone, defaultPropertyFilter);
 		// do some asserts
-		Collection<Object> entities = cloner.getOriginalToClone().values();
-		assertCloned(entities, Node.class, 9);
-		assertCloned(entities, Edge.class, 10);
-		assertCloned(entities, Point.class, 0);
-		assertCloned(entities, Foo.class, 0);
-		assertCloned(entities, Baz.class, 2);
-		assertCloned(entities, Bar.class, 0);
+		assertCloned(jpaExplorer, Node.class, 9);
+		assertCloned(jpaExplorer, Edge.class, 10);
+		assertCloned(jpaExplorer, Point.class, 0);
+		assertCloned(jpaExplorer, Foo.class, 0);
+		assertCloned(jpaExplorer, Baz.class, 2);
+		assertCloned(jpaExplorer, Bar.class, 0);
 		
-		assertParents((Node) cloner.getClone(getOriginal()), new HashSet<Edge>());
+		assertParents(clone, new HashSet<Edge>());
 	}
 	
 	public void testClone5() {
-		GraphExplorer explorer = new GraphExplorer("(children.value.child)*.(foo|baz).bar");
-		JpaCloner cloner = new JpaCloner(new JpaPropertyFilter() {
+		PropertyFilter filter = new PropertyFilter() {
 			@Override
-			public boolean isCloned(Object entity, String property) {
+			public boolean test(Object entity, String property) {
 				return !"id".equals(property);
 			}
-		});
-		
-		explorer.explore(getOriginal(), cloner);
+		};
+		Node clone = JpaCloner.clone(getOriginal(), filter, "(children.value.child)*.(foo|baz).bar");
+		JpaExplorer jpaExplorer = JpaExplorer.doExplore(clone, defaultPropertyFilter);
 		// do some asserts
-		Collection<Object> entities = cloner.getOriginalToClone().values();
-		assertCloned(entities, Node.class, 9);
-		assertCloned(entities, Edge.class, 10);
-		assertCloned(entities, Point.class, 0);
-		assertCloned(entities, Foo.class, 2);
-		assertCloned(entities, Baz.class, 2);
-		assertCloned(entities, Bar.class, 1);
+		assertCloned(jpaExplorer, Node.class, 9);
+		assertCloned(jpaExplorer, Edge.class, 10);
+		assertCloned(jpaExplorer, Point.class, 0);
+		assertCloned(jpaExplorer, Foo.class, 2);
+		assertCloned(jpaExplorer, Baz.class, 2);
+		assertCloned(jpaExplorer, Bar.class, 1);
 		// assert that each cloned object has null id
-		for (Entry<Object, Object> entry : cloner.getOriginalToClone().entrySet()) {
-			BaseEntity original = (BaseEntity) entry.getKey();
-			BaseEntity clone = (BaseEntity) entry.getValue();
-			assertNotNull(original.getId());
-			assertNull(clone.getId());
-			assertNotEquals(original, clone);
+		for (BaseEntity entity : jpaExplorer.getEntities(BaseEntity.class)) {
+			assertNull(entity.getId());
 		}		
 	}
 	
-	public void testClone6() {
-		final Set<Object> entities = new HashSet<Object>();
-		JpaCloner.deepClone(getOriginal(), new JpaPropertyFilter() {
-			@Override
-			public boolean isCloned(Object entity, String property) {
-				entities.add(entity);
-				return !"id".equals(property);
-			}
-		});
-		
+	public void testExplore() {
+		JpaExplorer jpaExplorer = JpaExplorer.doExplore(getOriginal(), defaultPropertyFilter);
 		// do some asserts
-		assertCloned(entities, Node.class, 9);
-		assertCloned(entities, Edge.class, 10);
-		assertCloned(entities, Point.class, 9);
-		assertCloned(entities, Foo.class, 2);
-		assertCloned(entities, Baz.class, 2);
-		assertCloned(entities, Bar.class, 1);
+		assertCloned(jpaExplorer, Node.class, 9);
+		assertCloned(jpaExplorer, Edge.class, 10);
+		assertCloned(jpaExplorer, Point.class, 9);
+		assertCloned(jpaExplorer, Foo.class, 2);
+		assertCloned(jpaExplorer, Baz.class, 2);
+		assertCloned(jpaExplorer, Bar.class, 1);
 		
-		entities.clear();
-		JpaCloner.deepClone(getOriginal(), new JpaPropertyFilter() {
+		jpaExplorer = JpaExplorer.doExplore(getOriginal(), new PropertyFilter() {
 			@Override
-			public boolean isCloned(Object entity, String property) {
-				entities.add(entity);
+			public boolean test(Object entity, String property) {
 				return !"point".equals(property) && !"bar".equals(property);
 			}
 		});
 		
 		// do some asserts
-		assertCloned(entities, Node.class, 9);
-		assertCloned(entities, Edge.class, 10);
-		assertCloned(entities, Point.class, 0);
-		assertCloned(entities, Foo.class, 2);
-		assertCloned(entities, Baz.class, 2);
-		assertCloned(entities, Bar.class, 0);
+		assertCloned(jpaExplorer, Node.class, 9);
+		assertCloned(jpaExplorer, Edge.class, 10);
+		assertCloned(jpaExplorer, Point.class, 0);
+		assertCloned(jpaExplorer, Foo.class, 2);
+		assertCloned(jpaExplorer, Baz.class, 2);
+		assertCloned(jpaExplorer, Bar.class, 0);
+		
+		jpaExplorer = JpaExplorer.doExplore(getOriginal(), "(children.value.child)*.(foo|baz)");
+		
+		// do some asserts
+		assertCloned(jpaExplorer, Node.class, 9);
+		assertCloned(jpaExplorer, Edge.class, 10);
+		assertCloned(jpaExplorer, Point.class, 0);
+		assertCloned(jpaExplorer, Foo.class, 2);
+		assertCloned(jpaExplorer, Baz.class, 2);
+		assertCloned(jpaExplorer, Bar.class, 0);
+		
+		jpaExplorer = JpaExplorer.doExplore(getOriginal());
+		
+		// do some asserts
+		assertCloned(jpaExplorer, Node.class, 1);
+		assertCloned(jpaExplorer, Edge.class, 0);
+		assertCloned(jpaExplorer, Point.class, 0);
+		assertCloned(jpaExplorer, Foo.class, 0);
+		assertCloned(jpaExplorer, Baz.class, 0);
+		assertCloned(jpaExplorer, Bar.class, 0);
 	}
 	
 	private void assertParents(Node node, Set<Edge> asserted) {

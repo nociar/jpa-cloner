@@ -17,10 +17,6 @@
  */
 package sk.nociar.jpacloner;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -36,14 +32,13 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 
-import javax.persistence.ElementCollection;
 import javax.persistence.Embeddable;
-import javax.persistence.Embedded;
 import javax.persistence.Entity;
-import javax.persistence.ManyToMany;
-import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
-import javax.persistence.OneToOne;
+
+import sk.nociar.jpacloner.JpaIntrospector.JpaClassInfo;
+import sk.nociar.jpacloner.graphs.EntityExplorer;
+import sk.nociar.jpacloner.graphs.GraphExplorer;
+import sk.nociar.jpacloner.graphs.PropertyFilter;
 
 
 /**
@@ -56,16 +51,16 @@ import javax.persistence.OneToOne;
  * Company clonedCompany = JpaCloner.clone(company, "department+.(boss|employees).address.(country|city|street)");</pre>
  * </li>
  * <li>
- * Cloning by {@link JpaPropertyFilter} gives full control over the cloning process. <br/>
+ * Cloning by {@link PropertyFilter} gives full control over the cloning process. <br/>
  * <b>Entity relations</b> and <b>basic properties</b> for cloning are defined by the filter implementation. Usage example:
  * <pre>
  * Company clonedCompany = JpaCloner.deepClone(company, new MyPropertyFilter());</pre>
  * </li>
  * <li>
- * Cloning by string patterns and {@link JpaPropertyFilter}. <b>Entity relations</b> for cloning are defined by the string patterns.
- * <b>Basic properties</b> for cloning are defined the filter implementation. Usage example:
+ * Cloning by string patterns and {@link PropertyFilter}. <b>Entity relations</b> for cloning are defined by the string patterns.
+ * <b>Basic properties</b> for cloning are defined by the filter implementation. Usage example:
  * <pre>
- * JpaPropertyFilter filter = new JpaPropertyFilter() {
+ * PropertyFilter filter = new PropertyFilter() {
  *     public boolean isCloned(Object entity, String property) {
  *         // do not clone primary keys
  *         return !"id".equals(property);
@@ -83,8 +78,8 @@ import javax.persistence.OneToOne;
  * <li>Cloned entities will be instantiated as <b>raw classes</b>, not Hibernate proxy classes.
  * Raw classes means classes annotated by {@link Entity} or {@link Embeddable}.</li>
  * <li>Cloned entities will have all basic properties (i.e. columns) populated by default. 
- * Advanced control over the basic property cloning is supported via the {@link JpaPropertyFilter}.</li>
- * <li>Relations to neighboring entities will be populated <b>only</b> if specified by the string patterns or the {@link JpaPropertyFilter}, <code>null</code> otherwise.</li>
+ * Advanced control over the basic property cloning is supported via the {@link PropertyFilter}.</li>
+ * <li>Relations to neighboring entities will be populated <b>only</b> if specified by the string patterns or the {@link PropertyFilter}, <code>null</code> otherwise.</li>
  * <li>Cloned collections and maps will be the standard java.util classes:
  * <table>
  * <tr><th>Original</th><th></th><th>Clone</th></tr>
@@ -109,151 +104,20 @@ public class JpaCloner implements EntityExplorer {
 	private final Map<Object, Object> originalToClone = new HashMap<Object, Object>();
 	private final Map<Object, Map<String, Collection<Object>>> exploredCache = new HashMap<Object, Map<String, Collection<Object>>>();
 	
-	private final JpaPropertyFilter propertyFilter;
+	private final PropertyFilter propertyFilter;
 	
-	private static final JpaPropertyFilter defaultPropertyFilter = new JpaPropertyFilter() {
+	private static final PropertyFilter defaultPropertyFilter = new PropertyFilter() {
 		@Override
-		public boolean isCloned(Object entity, String property) {
+		public boolean test(Object entity, String property) {
 			return true;
 		}
 	};
-	
-	/**
-	 * Info about JPA class.
-	 * 
-	 * @author Miroslav Nociar
-	 */
-	private static class JpaClassInfo {
-		final Constructor<?> constructor;
-		final List<String> columns = new ArrayList<String>();
-		final List<String> relations = new ArrayList<String>();
-		final Map<String, Field> fields = new HashMap<String, Field>();
-		final Map<String, Method> getters = new HashMap<String, Method>();
-		final Map<String, String> mappedBy = new HashMap<String, String>();
-		
-		JpaClassInfo(Class<?> clazz) {
-			try {
-				// find default constructor
-				constructor = clazz.getDeclaredConstructor();
-				constructor.setAccessible(true);
-			} catch (NoSuchMethodException e) {
-				throw new IllegalStateException("Unable to find default constructor for class: " + clazz, e);
-			}
-			// getters
-			for (Method m : clazz.getMethods()) {
-				if (Modifier.isStatic(m.getModifiers())) {
-					continue;
-				}
-				String methodName = m.getName();
-				String propertyName = null;
-				if (methodName.startsWith("get") && methodName.length() > 3) {
-					propertyName = methodName.substring(3);
-				} else if (methodName.startsWith("is") && methodName.length() > 2) {
-					propertyName = methodName.substring(2);
-				}
-				if (propertyName != null && !propertyName.isEmpty()) {
-					propertyName = Character.toLowerCase(propertyName.charAt(0)) + propertyName.substring(1);
-					getters.put(propertyName, m);
-				}
-			}
-			// fields
-			for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
-				for (Field f : c.getDeclaredFields()) {
-					if (Modifier.isStatic(f.getModifiers())) {
-						continue;
-					}
-					String name = f.getName();
-					// note: this is called by hibernate anyway...
-					f.setAccessible(true);
-					// add to maps
-					fields.put(name, f);
-					if (isBaseProperty(f)) {
-						columns.add(name);
-					} else {
-						relations.add(name);
-						OneToMany oneToMany = f.getAnnotation(OneToMany.class);
-						if (oneToMany != null) {
-							String mappedName = oneToMany.mappedBy();
-							if (mappedName != null && !mappedName.trim().isEmpty()) {
-								mappedBy.put(name, mappedName);
-							}
-						}
-					}
-					// check if the field has corresponding getter
-					if (!getters.containsKey(name)) {
-						throw new IllegalStateException("The class: " + clazz + " does not have a getter for field: " + name);
-					}
-				}
-			}
-		}
-		
-		private boolean isBaseProperty(Field f) {
-			return f.getAnnotation(ManyToOne.class) == null &&
-					f.getAnnotation(OneToOne.class) == null &&
-					f.getAnnotation(OneToMany.class) == null &&
-					f.getAnnotation(ManyToMany.class) == null &&
-					f.getAnnotation(Embedded.class) == null &&
-					f.getAnnotation(ElementCollection.class) == null;
-		}
-	}
-	
-	private static final Map<Class<?>, JpaClassInfo> classInfo = new ConcurrentHashMap<Class<?>, JpaClassInfo>();
-	
-	private static JpaClassInfo getClassInfo(Object object) {
-		if (object == null) {
-			return null;
-		}
-		Class<?> clazz = getJpaClass(object);
-		if (clazz == null) {
-			return null;
-		}
-		JpaClassInfo info = classInfo.get(clazz);
-		if (info == null) {
-			// create information for the class
-			info = new JpaClassInfo(clazz);
-			classInfo.put(clazz, info);
-		}
-		return info;
-	}
-
-	/**
-	 * Returns the raw JPA class (i.e. annotated by {@link Entity} or {@link Embeddable}) or <code>null</code>.
-	 */
-	public static Class<?> getJpaClass(Object object) {
-		if (object == null) {
-			return null;
-		}
-		for (Class<?> c = object.getClass(); c != null; c = c.getSuperclass()) {
-			if (c.getAnnotation(Entity.class) != null || c.getAnnotation(Embeddable.class) != null) {
-				return c;
-			}
-		}
-		return null;
-	}
-	
-	private static Object getProperty(Object object, String property) {
-		Method m = getClassInfo(object).getters.get(property);
-		try {
-			return m.invoke(object);
-		} catch (Exception e) {
-			throw new IllegalStateException("Invocation problem object: " + object + ", property: " + property, e);
-		}
-	}
-
-	private static void setProperty(Object object, String property, Object value) {
-		Field field = getClassInfo(object).fields.get(property);
-		try {
-			field.set(object, value);
-		} catch (IllegalAccessException e) {
-			throw new IllegalStateException("Set problem.", e);
-		}
-	}
 	
 	public JpaCloner() {
 		this(defaultPropertyFilter);
 	}
 	
-	public JpaCloner(JpaPropertyFilter propertyFilter) {
+	public JpaCloner(PropertyFilter propertyFilter) {
 		this.propertyFilter = propertyFilter;
 	}
 	
@@ -289,23 +153,19 @@ public class JpaCloner implements EntityExplorer {
 			}
 		}
 		
-		JpaClassInfo info = getClassInfo(original);
-		if (info == null) {
-			return null;
-		}
-		
-		if (!info.relations.contains(property)) {
+		JpaClassInfo info = JpaIntrospector.getClassInfo(original);
+		if (info == null || !info.getRelations().contains(property)) {
 			return null;
 		}
 		
 		Object clone = getClone(original);
-		Object value = getProperty(original, property);
+		Object value = JpaIntrospector.getProperty(original, property);
 
 		if (value == null) {
 			return null;
 		}
 
-		String mappedBy = info.mappedBy.get(property);
+		String mappedBy = info.getMappedBy(property);
 		Object clonedValue;
 		Collection explored;
 		
@@ -329,7 +189,7 @@ public class JpaCloner implements EntityExplorer {
 				Object c = getClone(o);
 				if (mappedBy != null && c != o) {
 					// handle OneToMany#mappedBy()
-					setProperty(c, mappedBy, clone);
+					JpaIntrospector.setProperty(c, mappedBy, clone);
 				}
 				clonedCollection.add(c);
 			}
@@ -349,7 +209,7 @@ public class JpaCloner implements EntityExplorer {
 				Object mapValue = getClone(entry.getValue());
 				if (mappedBy != null && mapValue != entry.getValue()) {
 					// handle OneToMany#mappedBy()
-					setProperty(mapValue, mappedBy, clone);
+					JpaIntrospector.setProperty(mapValue, mappedBy, clone);
 				}
 				clonedMap.put(mapKey, mapValue);
 			}
@@ -360,7 +220,7 @@ public class JpaCloner implements EntityExplorer {
 			clonedValue = getClone(value);
 		}
 		
-		setProperty(clone, property, clonedValue);
+		JpaIntrospector.setProperty(clone, property, clonedValue);
 
 		return explored;
 	}
@@ -374,21 +234,21 @@ public class JpaCloner implements EntityExplorer {
 		if (clone != null) {
 			return clone;
 		}
-		JpaClassInfo classInfo = getClassInfo(original);
+		JpaClassInfo classInfo = JpaIntrospector.getClassInfo(original);
 		if (classInfo == null) {
 			// not a JPA class, return the original object
 			return original;
 		}
 		try {
-			clone = classInfo.constructor.newInstance();
+			clone = classInfo.getConstructor().newInstance();
 		} catch (Exception e) {
 			throw new IllegalStateException("Unable to clone: " + original, e);
 		}
 		// clone columns
-		for (String property : classInfo.columns) {
-			if (propertyFilter.isCloned(original, property)) {
-				Object value = getProperty(original, property);
-				setProperty(clone, property, value);
+		for (String property : classInfo.getColumns()) {
+			if (propertyFilter.test(original, property)) {
+				Object value = JpaIntrospector.getProperty(original, property);
+				JpaIntrospector.setProperty(clone, property, value);
 			}
 		}
 		// put in the cache
@@ -396,35 +256,6 @@ public class JpaCloner implements EntityExplorer {
 		return clone;
 	}
 
-	@SuppressWarnings("rawtypes")
-	private void deepClone(Object object, Set<Object> clonedEntities) {
-		if (object == null || clonedEntities.contains(object)) {
-			return;
-		}
-		if (object instanceof Entry) {
-			Entry entry = (Entry) object;
-			deepClone(entry.getKey(), clonedEntities);
-			deepClone(entry.getValue(), clonedEntities);
-			return;
-		}
-		JpaClassInfo info = getClassInfo(object);
-		if (info == null) {
-			return;
-		}
-		clonedEntities.add(object);
-		// iterate over all relation properties 
-		for (String property : info.relations) {
-			if (propertyFilter.isCloned(object, property)) {
-				Collection<Object> explored = explore(object, property);
-				if (explored != null) {
-					for (Object e : explored) {
-						deepClone(e, clonedEntities);
-					}
-				}
-			}
-		}
-	}
-	
 	public Map<Object, Object> getOriginalToClone() {
 		return originalToClone;
 	}
@@ -454,7 +285,7 @@ public class JpaCloner implements EntityExplorer {
 	/**
 	 * Private helper method for collection cloning. 
 	 */
-	private static <T> void cloneCollection(Collection<T> originalCollection, Collection<T> clonedCollection, JpaPropertyFilter propertyFilter, String... patterns) {
+	private static <T> void cloneCollection(Collection<T> originalCollection, Collection<T> clonedCollection, PropertyFilter propertyFilter, String... patterns) {
 		JpaCloner jpaCloner = new JpaCloner(propertyFilter);
 		for (T root : originalCollection) {
 			clonedCollection.add(clone(root, jpaCloner, patterns));
@@ -465,7 +296,7 @@ public class JpaCloner implements EntityExplorer {
 	 * Clones the passed JPA entity. The property filter controls the cloning of <b>basic properties</b>. 
 	 * The cloned relations are specified by string patters. For description of patterns see the {@link GraphExplorer}.
 	 */
-	public static <T> T clone(T root, JpaPropertyFilter propertyFilter, String... patterns) {
+	public static <T> T clone(T root, PropertyFilter propertyFilter, String... patterns) {
 		return clone(root, new JpaCloner(propertyFilter), patterns);
 	}
 
@@ -473,7 +304,7 @@ public class JpaCloner implements EntityExplorer {
 	 * Clones the list of JPA entities. The property filter controls the cloning of <b>basic properties</b>. 
 	 * The cloned relations are specified by string patters. For description of patterns see the {@link GraphExplorer}.
 	 */
-	public static <T> List<T> clone(List<T> list, JpaPropertyFilter propertyFilter, String... patterns) {
+	public static <T> List<T> clone(List<T> list, PropertyFilter propertyFilter, String... patterns) {
 		List<T> clonedList = new ArrayList<T>(list.size());
 		cloneCollection(list, clonedList, propertyFilter, patterns);
 		return clonedList;
@@ -483,7 +314,7 @@ public class JpaCloner implements EntityExplorer {
 	 * Clones the set of JPA entities. The property filter controls the cloning of <b>basic properties</b>. 
 	 * The cloned relations are specified by string patters. For description of patterns see the {@link GraphExplorer}.
 	 */
-	public static <T> Set<T> clone(Set<T> set, JpaPropertyFilter propertyFilter, String... patterns) {
+	public static <T> Set<T> clone(Set<T> set, PropertyFilter propertyFilter, String... patterns) {
 		Set<T> clonedSet = new HashSet<T>();
 		cloneCollection(set, clonedSet, propertyFilter, patterns);
 		return clonedSet;
@@ -514,18 +345,19 @@ public class JpaCloner implements EntityExplorer {
 	}
 
 	@SuppressWarnings("unchecked")
-	private static <T> T deepClone(T root, JpaCloner jpaCloner) {
-		jpaCloner.deepClone(root, new HashSet<Object>());
+	private static <T> T deepClone(T root, JpaCloner jpaCloner, Set<Object> exploredEntities) {
+		GraphExplorer.deepExplore(root, exploredEntities, jpaCloner, JpaIntrospector.INSTANCE, jpaCloner.propertyFilter);
 		return (T) jpaCloner.getClone(root);
 	}
 
 	/**
 	 * Private helper method for collection cloning. 
 	 */
-	private static <T> void deepCloneCollection(Collection<T> originalCollection, Collection<T> clonedCollection, JpaPropertyFilter propertyFilter) {
+	private static <T> void deepCloneCollection(Collection<T> originalCollection, Collection<T> clonedCollection, PropertyFilter propertyFilter) {
 		JpaCloner jpaCloner = new JpaCloner(propertyFilter);
+		Set<Object> exploredEntities = new HashSet<Object>();
 		for (T root : originalCollection) {
-			clonedCollection.add(deepClone(root, jpaCloner));
+			clonedCollection.add(deepClone(root, jpaCloner, exploredEntities));
 		}
 	}
 	
@@ -533,15 +365,15 @@ public class JpaCloner implements EntityExplorer {
 	 * Clones the passed JPA entity by filter. The property filter controls
 	 * the cloning of basic properties and relations.
 	 */
-	public static <T> T deepClone(T root, JpaPropertyFilter propertyFilter) {
-		return deepClone(root, new JpaCloner(propertyFilter)); 
+	public static <T> T deepClone(T root, PropertyFilter propertyFilter) {
+		return deepClone(root, new JpaCloner(propertyFilter), new HashSet<Object>()); 
 	}
 	
 	/**
 	 * Clones the list of JPA entities by filter. The property filter controls
 	 * the cloning of basic properties and relations.
 	 */
-	public static <T> List<T> deepClone(List<T> list, JpaPropertyFilter propertyFilter) {
+	public static <T> List<T> deepClone(List<T> list, PropertyFilter propertyFilter) {
 		List<T> clonedList = new ArrayList<T>(list.size());
 		deepCloneCollection(list, clonedList, propertyFilter);
 		return clonedList;
@@ -551,7 +383,7 @@ public class JpaCloner implements EntityExplorer {
 	 * Clones the set of JPA entities by filter. The property filter controls
 	 * the cloning of basic properties and relations.
 	 */
-	public static <T> Set<T> deepClone(Set<T> set, JpaPropertyFilter propertyFilter) {
+	public static <T> Set<T> deepClone(Set<T> set, PropertyFilter propertyFilter) {
 		Set<T> clonedSet = new HashSet<T>();
 		deepCloneCollection(set, clonedSet, propertyFilter);
 		return clonedSet;

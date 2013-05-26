@@ -15,7 +15,7 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-package sk.nociar.jpacloner;
+package sk.nociar.jpacloner.graphs;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -27,7 +27,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
 
 /**
  * Generic explorer of paths in a graph (thread safe implementation). It is
@@ -162,7 +161,7 @@ public final class GraphExplorer {
 		}
 	}
 
-	private final Explorer explorer;
+	private final Explorer impl;
 
 	private static final Pattern p;
 	private static final Set<String> operators;
@@ -193,7 +192,7 @@ public final class GraphExplorer {
 	}
 
 	public GraphExplorer(String pattern) {
-		explorer = getExplorer(pattern);
+		impl = getExplorer(pattern);
 	}
 
 	private Explorer getExplorer(String pattern) {
@@ -284,8 +283,30 @@ public final class GraphExplorer {
 		throw new IllegalStateException("Unknown tokens: " + tokens);
 	}
 
-	public void explore(Object root, EntityExplorer nodeExplorer) {
-		explorer.explore(root, nodeExplorer);
+	public void explore(Object root, EntityExplorer explorer) {
+		impl.explore(root, explorer);
 	}
 
+	public static void deepExplore(Object object, Set<Object> exploredEntities, EntityExplorer explorer, EntityIntrospector introspector, PropertyFilter filter) {
+		if (object == null || exploredEntities.contains(object)) {
+			return;
+		}
+		exploredEntities.add(object);
+		Collection<String> properties = introspector.getProperties(object);
+		if (properties == null) {
+			return;
+		}
+		// iterate over all properties 
+		for (String property : properties) {
+			if (filter.test(object, property)) {
+				Collection<Object> explored = explorer.explore(object, property);
+				if (explored == null) {
+					continue;
+				}
+				for (Object e : explored) {
+					deepExplore(e, exploredEntities, explorer, introspector, filter);
+				}
+			}
+		}
+	}
 }

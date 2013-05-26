@@ -15,17 +15,22 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
-package sk.nociar.jpacloner;
+package sk.nociar.jpacloner.graphs;
 
-public interface JpaPropertyFilter {
+/**
+ * Simple property filter.
+ * 
+ * @author Miroslav Nociar
+ */
+public interface PropertyFilter {
 	/**
-	 * Returns <code>true</code> if a property of an entity should be cloned,
+	 * Returns <code>true</code> if a property of an entity should be processed,
 	 * <code>false</code> otherwise.
 	 * 
 	 * @param entity
-	 *            the JPA entity
+	 *            the entity
 	 * @param property
-	 *            the JPA property
+	 *            the property
 	 */
-	public boolean isCloned(Object entity, String property);
+	public boolean test(Object entity, String property);
 }
