@@ -141,7 +141,6 @@ public class JpaExplorer implements EntityExplorer {
 	 */
 	public static JpaExplorer doExplore(Object root, String... patterns) {
 		JpaExplorer jpaExplorer = new JpaExplorer();
-		jpaExplorer.addJpaObject(root);
 		explore(root, jpaExplorer, patterns);
 		return jpaExplorer;
 	}
@@ -153,7 +152,6 @@ public class JpaExplorer implements EntityExplorer {
 	public static JpaExplorer doExplore(Collection<?> collection, String... patterns) {
 		JpaExplorer jpaExplorer = new JpaExplorer();
 		for (Object root : collection) {
-			jpaExplorer.addJpaObject(root);
 			explore(root, jpaExplorer, patterns);
 		}
 		return jpaExplorer;
