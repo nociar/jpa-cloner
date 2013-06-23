@@ -34,6 +34,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import javax.persistence.Embeddable;
 import javax.persistence.Entity;
+import javax.persistence.OneToMany;
+import javax.persistence.OneToOne;
 
 import sk.nociar.jpacloner.JpaIntrospector.JpaClassInfo;
 import sk.nociar.jpacloner.graphs.EntityExplorer;
@@ -80,6 +82,7 @@ import sk.nociar.jpacloner.graphs.PropertyFilter;
  * <li>Cloned entities will have all basic properties (i.e. columns) populated by default. 
  * Advanced control over the basic property cloning is supported via the {@link PropertyFilter}.</li>
  * <li>Relations to neighboring entities will be populated <b>only</b> if specified by the string patterns or the {@link PropertyFilter}, <code>null</code> otherwise.</li>
+ * <li>{@link OneToMany#mappedBy()} and {@link OneToOne#mappedBy()} attributes are handled automatically</li>
  * <li>Cloned collections and maps will be the standard java.util classes:
  * <table>
  * <tr><th>Original</th><th></th><th>Clone</th></tr>
@@ -165,7 +168,6 @@ public class JpaCloner implements EntityExplorer {
 			return null;
 		}
 
-		String mappedBy = info.getMappedBy(property);
 		Object clonedValue;
 		Collection explored;
 		
@@ -186,38 +188,31 @@ public class JpaCloner implements EntityExplorer {
 				throw new IllegalArgumentException("Unsupported collection class: " + explored.getClass());
 			}
 			for (Object o : explored) {
-				Object c = getClone(o);
-				if (mappedBy != null && c != o) {
-					// handle OneToMany#mappedBy()
-					JpaIntrospector.setProperty(c, mappedBy, clone);
-				}
-				clonedCollection.add(c);
+				clonedCollection.add(getClone(o));
 			}
 			clonedValue = clonedCollection;
+			handleMappedBy(explored, info, property);
 		} else if (value instanceof Map) {
 			// Map property
-			Set<Entry<Object, Object>> entries = ((Map<Object, Object>) value).entrySet(); 
-			explored = (Collection) entries;
+			Map map = (Map) value;
+			explored = map.entrySet();
 			Map clonedMap;
 			if (value instanceof SortedMap) {
 				clonedMap = new TreeMap(((SortedMap) value).comparator());
 			} else {
 				clonedMap = new HashMap();
 			}
-			for (Entry<Object, Object> entry : entries) {
-				Object mapKey = getClone(entry.getKey());
-				Object mapValue = getClone(entry.getValue());
-				if (mappedBy != null && mapValue != entry.getValue()) {
-					// handle OneToMany#mappedBy()
-					JpaIntrospector.setProperty(mapValue, mappedBy, clone);
-				}
-				clonedMap.put(mapKey, mapValue);
+			for (Object e : explored) {
+				Entry entry = (Entry) e;
+				clonedMap.put(getClone(entry.getKey()), getClone(entry.getValue()));
 			}
 			clonedValue = clonedMap;
+			handleMappedBy(map.values(), info, property);
 		} else {
 			// singular property
 			explored = Collections.singleton(value);
 			clonedValue = getClone(value);
+			handleMappedBy(explored, info, property);
 		}
 		
 		JpaIntrospector.setProperty(clone, property, clonedValue);
@@ -225,6 +220,26 @@ public class JpaCloner implements EntityExplorer {
 		return explored;
 	}
 	
+	@SuppressWarnings("rawtypes")
+	private void handleMappedBy(Collection explored, JpaClassInfo info, String property) {
+		String[] mappedBy = info.getMappedBy(property);
+		if (mappedBy != null) {
+			for (Object e : explored) {
+				handleMappedBy(e, mappedBy, 0);
+			}
+		}
+	}
+
+	private void handleMappedBy(Object o, String[] mappedBy, int idx) {
+		Collection<Object> explored = explore(o, mappedBy[idx]);
+		idx++;
+		if (explored != null && idx < mappedBy.length) {
+			for (Object e : explored) {
+				handleMappedBy(e, mappedBy, idx);
+			}
+		}
+	}
+
 	public Object getClone(Object original) {
 		if (original == null) {
 			return null;

@@ -63,7 +63,7 @@ public class JpaIntrospector implements EntityIntrospector {
 		private final List<String> relations = new ArrayList<String>();
 		private final Map<String, Field> fields = new HashMap<String, Field>();
 		private final Map<String, Method> getters = new HashMap<String, Method>();
-		private final Map<String, String> mappedBy = new HashMap<String, String>();
+		private final Map<String, String[]> mappedBy = new HashMap<String, String[]>();
 		
 		private JpaClassInfo(Class<?> clazz) {
 			try {
@@ -109,7 +109,13 @@ public class JpaIntrospector implements EntityIntrospector {
 						if (oneToMany != null) {
 							String mappedName = oneToMany.mappedBy();
 							if (mappedName != null && !mappedName.trim().isEmpty()) {
-								mappedBy.put(name, mappedName);
+								mappedName = mappedName.trim();
+								// NOTE: the mappedBy attribute may be used in @Embeddable
+								if (mappedName.contains(".")) {
+									mappedBy.put(name, mappedName.split("\\."));
+								} else {
+									mappedBy.put(name, new String[] {mappedName});
+								}
 							}
 						}
 					}
@@ -150,7 +156,7 @@ public class JpaIntrospector implements EntityIntrospector {
 			return getters.get(property);
 		}
 
-		public String getMappedBy(String property) {
+		public String[] getMappedBy(String property) {
 			return mappedBy.get(property);
 		}
 	}
