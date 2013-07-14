@@ -105,17 +105,22 @@ public class JpaIntrospector implements EntityIntrospector {
 						columns.add(name);
 					} else {
 						relations.add(name);
+						// OneToMany/OneToOne - handle the mappedBy attribute 
 						OneToMany oneToMany = f.getAnnotation(OneToMany.class);
+						OneToOne oneToOne = f.getAnnotation(OneToOne.class);
+						String mappedName = null;
 						if (oneToMany != null) {
-							String mappedName = oneToMany.mappedBy();
-							if (mappedName != null && !mappedName.trim().isEmpty()) {
-								mappedName = mappedName.trim();
-								// NOTE: the mappedBy attribute may be used in @Embeddable
-								if (mappedName.contains(".")) {
-									mappedBy.put(name, mappedName.split("\\."));
-								} else {
-									mappedBy.put(name, new String[] {mappedName});
-								}
+							mappedName = oneToMany.mappedBy();
+						} else if (oneToOne != null) {
+							mappedName = oneToOne.mappedBy();
+						}
+						if (mappedName != null && !mappedName.trim().isEmpty()) {
+							mappedName = mappedName.trim();
+							// NOTE: the mappedBy attribute may be used in @Embeddable
+							if (mappedName.contains(".")) {
+								mappedBy.put(name, mappedName.split("\\."));
+							} else {
+								mappedBy.put(name, new String[] {mappedName});
 							}
 						}
 					}
