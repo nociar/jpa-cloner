@@ -33,6 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import javax.persistence.ElementCollection;
 import javax.persistence.Embeddable;
 import javax.persistence.Embedded;
+import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
 import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
@@ -138,6 +139,7 @@ public class JpaIntrospector implements EntityIntrospector {
 					f.getAnnotation(OneToMany.class) == null &&
 					f.getAnnotation(ManyToMany.class) == null &&
 					f.getAnnotation(Embedded.class) == null &&
+					f.getAnnotation(EmbeddedId.class) == null &&
 					f.getAnnotation(ElementCollection.class) == null;
 		}
 
