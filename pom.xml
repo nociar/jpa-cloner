@@ -1,28 +1,39 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>sk.nociar</groupId>
+	<groupId>com.github.nociar</groupId>
 	<artifactId>jpa-cloner</artifactId>
-	<version>0.0.1</version>
+	<version>0.0.2</version>
+	<description>The JPA Cloner project allows to clone JPA entity subgraphs.</description>
+	<url>https://github.com/nociar/jpa-cloner</url>
 
+	<scm>
+		<connection>scm:git:git@github.com:nociar/jpa-cloner.git</connection>
+		<developerConnection>scm:git:git@github.com:nociar/jpa-cloner.git</developerConnection>
+		<url>git@github.com:nociar/jpa-cloner.git</url>
+	</scm>
+	
 	<properties>
 		<maven.compiler.target>1.6</maven.compiler.target>
 		<maven.compiler.source>1.6</maven.compiler.source>
-		<spring.version>3.2.2.RELEASE</spring.version>
+		<!-- NOTE spring is used only for testing -->
+		<spring.version>3.2.6.RELEASE</spring.version>
 	</properties>
 
 	<dependencies>
-		<dependency>
-			<groupId>junit</groupId>
-			<artifactId>junit</artifactId>
-			<version>4.11</version>
-			<scope>test</scope>
-		</dependency>
+		<!-- JPA api is a provided dependency -->
 		<dependency>
 			<groupId>org.hibernate.javax.persistence</groupId>
 			<artifactId>hibernate-jpa-2.0-api</artifactId>
 			<version>1.0.1.Final</version>
 			<scope>provided</scope>
+		</dependency>
+		<!-- following dependencies are only for testing -->
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>4.11</version>
+			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework</groupId>

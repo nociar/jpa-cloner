@@ -56,7 +56,7 @@ import sk.nociar.jpacloner.graphs.PropertyFilter;
  * Cloning by {@link PropertyFilter} gives full control over the cloning process. <br/>
  * <b>Entity relations</b> and <b>basic properties</b> for cloning are defined by the filter implementation. Usage example:
  * <pre>
- * Company clonedCompany = JpaCloner.deepClone(company, new MyPropertyFilter());</pre>
+ * Company clonedCompany = JpaCloner.clone(company, new MyPropertyFilter());</pre>
  * </li>
  * <li>
  * Cloning by string patterns and {@link PropertyFilter}. <b>Entity relations</b> for cloning are defined by the string patterns.
@@ -68,7 +68,7 @@ import sk.nociar.jpacloner.graphs.PropertyFilter;
  *         return !"id".equals(property);
  *     }
  * } 
- * Company clonedCompany = JpaCloner.deepClone(company, filter, "department+.(boss|employees).address.(country|city|street)");</pre>
+ * Company clonedCompany = JpaCloner.clone(company, filter, "department+.(boss|employees).address.(country|city|street)");</pre>
  * </li>
  * </ol>
  * Requirements:
@@ -259,13 +259,8 @@ public class JpaCloner implements EntityExplorer {
 		} catch (Exception e) {
 			throw new IllegalStateException("Unable to clone: " + original, e);
 		}
-		// clone columns
-		for (String property : classInfo.getColumns()) {
-			if (propertyFilter.test(original, property)) {
-				Object value = JpaIntrospector.getProperty(original, property);
-				JpaIntrospector.setProperty(clone, property, value);
-			}
-		}
+		// copy columns
+		copyColumns(original, clone, classInfo, propertyFilter);
 		// put in the cache
 		originalToClone.put(original, clone);
 		return clone;
@@ -360,19 +355,19 @@ public class JpaCloner implements EntityExplorer {
 	}
 
 	@SuppressWarnings("unchecked")
-	private static <T> T deepClone(T root, JpaCloner jpaCloner, Set<Object> exploredEntities) {
-		GraphExplorer.deepExplore(root, exploredEntities, jpaCloner, JpaIntrospector.INSTANCE, jpaCloner.propertyFilter);
+	private static <T> T clone(T root, JpaCloner jpaCloner, Set<Object> exploredEntities) {
+		GraphExplorer.explore(root, exploredEntities, jpaCloner, JpaIntrospector.INSTANCE, jpaCloner.propertyFilter);
 		return (T) jpaCloner.getClone(root);
 	}
 
 	/**
 	 * Private helper method for collection cloning. 
 	 */
-	private static <T> void deepCloneCollection(Collection<T> originalCollection, Collection<T> clonedCollection, PropertyFilter propertyFilter) {
+	private static <T> void cloneCollection(Collection<T> originalCollection, Collection<T> clonedCollection, PropertyFilter propertyFilter) {
 		JpaCloner jpaCloner = new JpaCloner(propertyFilter);
 		Set<Object> exploredEntities = new HashSet<Object>();
 		for (T root : originalCollection) {
-			clonedCollection.add(deepClone(root, jpaCloner, exploredEntities));
+			clonedCollection.add(clone(root, jpaCloner, exploredEntities));
 		}
 	}
 	
@@ -380,17 +375,17 @@ public class JpaCloner implements EntityExplorer {
 	 * Clones the passed JPA entity by filter. The property filter controls
 	 * the cloning of basic properties and relations.
 	 */
-	public static <T> T deepClone(T root, PropertyFilter propertyFilter) {
-		return deepClone(root, new JpaCloner(propertyFilter), new HashSet<Object>()); 
+	public static <T> T clone(T root, PropertyFilter propertyFilter) {
+		return clone(root, new JpaCloner(propertyFilter), new HashSet<Object>()); 
 	}
 	
 	/**
 	 * Clones the list of JPA entities by filter. The property filter controls
 	 * the cloning of basic properties and relations.
 	 */
-	public static <T> List<T> deepClone(List<T> list, PropertyFilter propertyFilter) {
+	public static <T> List<T> clone(List<T> list, PropertyFilter propertyFilter) {
 		List<T> clonedList = new ArrayList<T>(list.size());
-		deepCloneCollection(list, clonedList, propertyFilter);
+		cloneCollection(list, clonedList, propertyFilter);
 		return clonedList;
 	}
 
@@ -398,9 +393,33 @@ public class JpaCloner implements EntityExplorer {
 	 * Clones the set of JPA entities by filter. The property filter controls
 	 * the cloning of basic properties and relations.
 	 */
-	public static <T> Set<T> deepClone(Set<T> set, PropertyFilter propertyFilter) {
+	public static <T> Set<T> clone(Set<T> set, PropertyFilter propertyFilter) {
 		Set<T> clonedSet = new HashSet<T>();
-		deepCloneCollection(set, clonedSet, propertyFilter);
+		cloneCollection(set, clonedSet, propertyFilter);
 		return clonedSet;
+	}
+
+	/**
+	 * Copy all columns from o1 to o2.
+	 */
+	private static void copyColumns(Object o1, Object o2, JpaClassInfo classInfo, PropertyFilter propertyFilter) {
+		for (String property : classInfo.getColumns()) {
+			if (propertyFilter.test(o1, property)) {
+				Object value = JpaIntrospector.getProperty(o1, property);
+				JpaIntrospector.setProperty(o2, property, value);
+			}
+		}
+	}
+	
+	public static <T, X extends T> void copy(T o1, X o2) {
+		copy(o1, o1, defaultPropertyFilter);
+	}
+	
+	public static <T, X extends T> void copy(T o1, X o2, PropertyFilter propertyFilter) {
+		JpaClassInfo classInfo = JpaIntrospector.getClassInfo(o1);
+		if (classInfo == null) {
+			return;
+		}
+		copyColumns(o1, o2, classInfo, propertyFilter);
 	}
 }

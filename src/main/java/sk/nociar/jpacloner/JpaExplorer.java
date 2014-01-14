@@ -164,7 +164,7 @@ public class JpaExplorer implements EntityExplorer {
 	public static JpaExplorer doExplore(Object root, PropertyFilter filter) {
 		JpaExplorer jpaExplorer = new JpaExplorer();
 		jpaExplorer.addJpaObject(root);
-		GraphExplorer.deepExplore(root, new HashSet<Object>(), jpaExplorer, JpaIntrospector.INSTANCE, filter);
+		GraphExplorer.explore(root, new HashSet<Object>(), jpaExplorer, JpaIntrospector.INSTANCE, filter);
 		return jpaExplorer; 
 	}
 	
@@ -177,7 +177,7 @@ public class JpaExplorer implements EntityExplorer {
 		Set<Object> exploredEntities = new HashSet<Object>();
 		for (Object root : collection) {
 			jpaExplorer.addJpaObject(root);
-			GraphExplorer.deepExplore(root, exploredEntities, jpaExplorer, JpaIntrospector.INSTANCE, filter);
+			GraphExplorer.explore(root, exploredEntities, jpaExplorer, JpaIntrospector.INSTANCE, filter);
 		}
 		return jpaExplorer;
 	}

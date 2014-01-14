@@ -287,7 +287,7 @@ public final class GraphExplorer {
 		impl.explore(root, explorer);
 	}
 
-	public static void deepExplore(Object object, Set<Object> exploredEntities, EntityExplorer explorer, EntityIntrospector introspector, PropertyFilter filter) {
+	public static void explore(Object object, Set<Object> exploredEntities, EntityExplorer explorer, EntityIntrospector introspector, PropertyFilter filter) {
 		if (object == null || exploredEntities.contains(object)) {
 			return;
 		}
@@ -304,7 +304,7 @@ public final class GraphExplorer {
 					continue;
 				}
 				for (Object e : explored) {
-					deepExplore(e, exploredEntities, explorer, introspector, filter);
+					explore(e, exploredEntities, explorer, introspector, filter);
 				}
 			}
 		}
