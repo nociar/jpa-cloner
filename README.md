@@ -28,7 +28,7 @@ Company companyClone = JpaCloner.clone(company, "department*.employees");
 Following example shows cloning by a custom property filter:
 ```java
 Company company = entityManager.find(Company.class, companyId);
-Company clone = JpaCloner.deepClone(company, new PropertyFilter() {
+Company companyClone = JpaCloner.clone(company, new PropertyFilter() {
     @Override
     boolean test(Object entity, String property) {
         // do not clone primary keys for the whole entity subgraph
