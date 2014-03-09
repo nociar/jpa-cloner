@@ -222,7 +222,7 @@ public class JpaCloner implements EntityExplorer {
 	
 	@SuppressWarnings("rawtypes")
 	private void handleMappedBy(Collection explored, JpaClassInfo info, String property) {
-		String[] mappedBy = info.getMappedBy(property);
+		List<String> mappedBy = info.getMappedBy(property);
 		if (mappedBy != null) {
 			for (Object e : explored) {
 				handleMappedBy(e, mappedBy, 0);
@@ -230,10 +230,10 @@ public class JpaCloner implements EntityExplorer {
 		}
 	}
 
-	private void handleMappedBy(Object o, String[] mappedBy, int idx) {
-		Collection<Object> explored = explore(o, mappedBy[idx]);
+	private void handleMappedBy(Object o, List<String> mappedBy, int idx) {
+		Collection<Object> explored = explore(o, mappedBy.get(idx));
 		idx++;
-		if (explored != null && idx < mappedBy.length) {
+		if (explored != null && idx < mappedBy.size()) {
 			for (Object e : explored) {
 				handleMappedBy(e, mappedBy, idx);
 			}

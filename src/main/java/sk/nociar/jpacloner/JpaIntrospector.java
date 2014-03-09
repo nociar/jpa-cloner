@@ -17,12 +17,15 @@
  */
 package sk.nociar.jpacloner;
 
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
+import static java.util.Collections.unmodifiableList;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -64,7 +67,8 @@ public class JpaIntrospector implements EntityIntrospector {
 		private final List<String> relations = new ArrayList<String>();
 		private final Map<String, Field> fields = new HashMap<String, Field>();
 		private final Map<String, Method> getters = new HashMap<String, Method>();
-		private final Map<String, String[]> mappedBy = new HashMap<String, String[]>();
+		private final Map<String, Method> setters = new HashMap<String, Method>();
+		private final Map<String, List<String>> mappedBy = new HashMap<String, List<String>>();
 		
 		private JpaClassInfo(Class<?> clazz) {
 			try {
@@ -74,21 +78,27 @@ public class JpaIntrospector implements EntityIntrospector {
 			} catch (NoSuchMethodException e) {
 				throw new IllegalStateException("Unable to find default constructor for class: " + clazz, e);
 			}
-			// getters
+			// getters & setters
 			for (Method m : clazz.getMethods()) {
 				if (Modifier.isStatic(m.getModifiers())) {
 					continue;
 				}
 				String methodName = m.getName();
 				String propertyName = null;
-				if (methodName.startsWith("get") && methodName.length() > 3) {
+				Map<String, Method> map = null;
+				if (methodName.startsWith("get") && methodName.length() > 3 && m.getParameterTypes().length == 0) {
 					propertyName = methodName.substring(3);
-				} else if (methodName.startsWith("is") && methodName.length() > 2) {
+					map = getters;
+				} else if (methodName.startsWith("is") && methodName.length() > 2 && m.getParameterTypes().length == 0) {
 					propertyName = methodName.substring(2);
+					map = getters;
+				} else if (methodName.startsWith("set") && methodName.length() > 3 && m.getParameterTypes().length == 1) {
+					propertyName = methodName.substring(3);
+					map = setters;
 				}
 				if (propertyName != null && !propertyName.isEmpty()) {
 					propertyName = Character.toLowerCase(propertyName.charAt(0)) + propertyName.substring(1);
-					getters.put(propertyName, m);
+					map.put(propertyName, m);
 				}
 			}
 			// fields
@@ -102,7 +112,7 @@ public class JpaIntrospector implements EntityIntrospector {
 					f.setAccessible(true);
 					// add to maps
 					fields.put(name, f);
-					if (isBaseProperty(f)) {
+					if (!isRelation(f)) {
 						columns.add(name);
 					} else {
 						relations.add(name);
@@ -119,9 +129,9 @@ public class JpaIntrospector implements EntityIntrospector {
 							mappedName = mappedName.trim();
 							// NOTE: the mappedBy attribute may be used in @Embeddable
 							if (mappedName.contains(".")) {
-								mappedBy.put(name, mappedName.split("\\."));
+								mappedBy.put(name, unmodifiableList(asList(mappedName.split("\\."))));
 							} else {
-								mappedBy.put(name, new String[] {mappedName});
+								mappedBy.put(name, singletonList(mappedName));
 							}
 						}
 					}
@@ -133,14 +143,14 @@ public class JpaIntrospector implements EntityIntrospector {
 			}
 		}
 		
-		private boolean isBaseProperty(Field f) {
-			return f.getAnnotation(ManyToOne.class) == null &&
-					f.getAnnotation(OneToOne.class) == null &&
-					f.getAnnotation(OneToMany.class) == null &&
-					f.getAnnotation(ManyToMany.class) == null &&
-					f.getAnnotation(Embedded.class) == null &&
-					f.getAnnotation(EmbeddedId.class) == null &&
-					f.getAnnotation(ElementCollection.class) == null;
+		private boolean isRelation(Field f) {
+			return f.getAnnotation(ManyToOne.class) != null ||
+					f.getAnnotation(OneToOne.class) != null ||
+					f.getAnnotation(OneToMany.class) != null ||
+					f.getAnnotation(ManyToMany.class) != null ||
+					f.getAnnotation(Embedded.class) != null ||
+					f.getAnnotation(EmbeddedId.class) != null ||
+					f.getAnnotation(ElementCollection.class) != null;
 		}
 
 		public Constructor<?> getConstructor() {
@@ -162,8 +172,12 @@ public class JpaIntrospector implements EntityIntrospector {
 		public Method getGetter(String property) {
 			return getters.get(property);
 		}
+		
+		public Method getSetter(String property) {
+			return setters.get(property);
+		}
 
-		public String[] getMappedBy(String property) {
+		public List<String> getMappedBy(String property) {
 			return mappedBy.get(property);
 		}
 	}
@@ -203,24 +217,35 @@ public class JpaIntrospector implements EntityIntrospector {
 	}
 	
 	public static Object getProperty(Object object, String property) {
-		Method m = getClassInfo(object).getGetter(property);
+		Method getter = getClassInfo(object).getGetter(property);
 		try {
-			return m.invoke(object);
+			return getter.invoke(object);
 		} catch (Exception e) {
-			throw new IllegalStateException("Invocation problem object: " + object + ", property: " + property, e);
+			throw new RuntimeException("Invocation problem object: " + object + ", property: " + property, e);
 		}
 	}
 
 	public static void setProperty(Object object, String property, Object value) {
-		Field field = getClassInfo(object).getField(property);
-		try {
-			field.set(object, value);
-		} catch (IllegalAccessException e) {
-			throw new IllegalStateException("Set problem.", e);
+		JpaClassInfo info = getClassInfo(object);
+		Method setter = info.getSetter(property);
+		if (setter != null) {
+			try {
+				setter.invoke(object, value);
+			} catch (Exception e) {
+				throw new RuntimeException("Invocation problem object: " + object + ", property: " + property, e);
+			}
+		} else {
+			// no setter, try field access
+			Field field = info.getField(property);
+			try {
+				field.set(object, value);
+			} catch (IllegalAccessException e) {
+				throw new RuntimeException(e);
+			}
 		}
 	}
 
-	private static final List<String> mapEntryProperties = Arrays.asList("key", "value");
+	private static final List<String> mapEntryProperties = unmodifiableList(asList("key", "value"));
 	
 	@Override
 	public Collection<String> getProperties(Object object) {

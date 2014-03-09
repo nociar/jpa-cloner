@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.github.nociar</groupId>
 	<artifactId>jpa-cloner</artifactId>
-	<version>0.0.2</version>
+	<version>0.0.3</version>
 	<description>The JPA Cloner project allows to clone JPA entity subgraphs.</description>
 	<url>https://github.com/nociar/jpa-cloner</url>
 
