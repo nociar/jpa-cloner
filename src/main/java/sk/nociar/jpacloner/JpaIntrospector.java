@@ -28,10 +28,12 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import javax.persistence.ElementCollection;
 import javax.persistence.Embeddable;
@@ -63,8 +65,8 @@ public class JpaIntrospector implements EntityIntrospector {
 	 */
 	public static class JpaClassInfo {
 		private final Constructor<?> constructor;
-		private final List<String> columns = new ArrayList<String>();
-		private final List<String> relations = new ArrayList<String>();
+		private final List<String> columns;
+		private final List<String> relations;
 		private final Map<String, Field> fields = new HashMap<String, Field>();
 		private final Map<String, Method> getters = new HashMap<String, Method>();
 		private final Map<String, Method> setters = new HashMap<String, Method>();
@@ -78,6 +80,8 @@ public class JpaIntrospector implements EntityIntrospector {
 			} catch (NoSuchMethodException e) {
 				throw new IllegalStateException("Unable to find default constructor for class: " + clazz, e);
 			}
+			List<String> columns = new ArrayList<String>();
+			LinkedList<String> relations = new LinkedList<String>();
 			// getters & setters
 			for (Method m : clazz.getMethods()) {
 				if (Modifier.isStatic(m.getModifiers())) {
@@ -115,17 +119,23 @@ public class JpaIntrospector implements EntityIntrospector {
 					if (!isRelation(f)) {
 						columns.add(name);
 					} else {
-						relations.add(name);
-						// OneToMany/OneToOne - handle the mappedBy attribute 
-						OneToMany oneToMany = f.getAnnotation(OneToMany.class);
 						OneToOne oneToOne = f.getAnnotation(OneToOne.class);
 						String mappedName = null;
-						if (oneToMany != null) {
-							mappedName = oneToMany.mappedBy();
-						} else if (oneToOne != null) {
+						if (oneToOne != null) {
+							// OneToOne - add the relation to the end
+							relations.addLast(name);
 							mappedName = oneToOne.mappedBy();
+						} else {
+							// OneToMany/ManyToMany - insert the relation to the beginning
+							// NOTE this may significantly decrease the number of queries during the cloning! 
+							relations.addFirst(name);
+							OneToMany oneToMany = f.getAnnotation(OneToMany.class);
+							if (oneToMany != null) {
+								mappedName = oneToMany.mappedBy();
+							}
 						}
 						if (mappedName != null && !mappedName.trim().isEmpty()) {
+							// OneToMany/OneToOne - handle the mappedBy attribute 
 							mappedName = mappedName.trim();
 							// NOTE: the mappedBy attribute may be used in @Embeddable
 							if (mappedName.contains(".")) {
@@ -141,6 +151,8 @@ public class JpaIntrospector implements EntityIntrospector {
 					}
 				}
 			}
+			this.columns = unmodifiableList(columns);
+			this.relations = unmodifiableList(new ArrayList<String>(relations));
 		}
 		
 		private boolean isRelation(Field f) {
@@ -182,7 +194,7 @@ public class JpaIntrospector implements EntityIntrospector {
 		}
 	}
 	
-	private static final Map<Class<?>, JpaClassInfo> classInfo = new ConcurrentHashMap<Class<?>, JpaClassInfo>();
+	private static final ConcurrentMap<Class<?>, JpaClassInfo> classInfo = new ConcurrentHashMap<Class<?>, JpaClassInfo>();
 	
 	public static JpaClassInfo getClassInfo(Object object) {
 		if (object == null) {
@@ -196,7 +208,7 @@ public class JpaIntrospector implements EntityIntrospector {
 		if (info == null) {
 			// create information for the class
 			info = new JpaClassInfo(clazz);
-			classInfo.put(clazz, info);
+			classInfo.putIfAbsent(clazz, info);
 		}
 		return info;
 	}

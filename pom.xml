@@ -3,9 +3,25 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.github.nociar</groupId>
 	<artifactId>jpa-cloner</artifactId>
-	<version>0.0.3</version>
-	<description>The JPA Cloner project allows to clone JPA entity subgraphs.</description>
+	<version>1.0.0-SNAPSHOT</version>
+	<description>JPA Cloner allows cloning of JPA entity subgraphs.</description>
 	<url>https://github.com/nociar/jpa-cloner</url>
+
+	<licenses>
+		<license>
+			<name>The GNU General Public License</name>
+			<url>http://www.gnu.org/licenses/gpl.txt</url>
+		</license>
+	</licenses>
+
+	<developers>
+		<developer>
+			<name>Miroslav Nociar</name>
+			<email>nociarmi@gmail.com</email>
+			<organization></organization>
+			<organizationUrl>https://github.com/nociar</organizationUrl>
+		</developer>
+	</developers>
 
 	<scm>
 		<connection>scm:git:git@github.com:nociar/jpa-cloner.git</connection>
@@ -75,6 +91,30 @@
 
 	<build>
 		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-source-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>attach-sources</id>
+						<goals>
+							<goal>jar-no-fork</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-javadoc-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>attach-javadocs</id>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
 		</plugins>
 	</build>
 </project>

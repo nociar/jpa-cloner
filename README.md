@@ -1,7 +1,7 @@
 
 # JPA cloner #
 
-The project allows to clone JPA entity _**subgraphs**_. The subgraphs are defined by _string patterns_ or by a custom _PropertyFilter_. The string patterns support operators to allow various expressions of property paths like "company.department+.(boss|employees).address.(country|city|street)". Requirements:
+The project allows cloning of JPA entity _**subgraphs**_. Entity subgraphs are defined by string patterns or by a custom _PropertyFilter_. The string patterns support operators to allow various expressions of property paths like "company.department+.(boss|employees).address.(country|city|street)". Requirements:
 
 - The JPA cloner is tested only against **Hibernate**.
 - Cloned entities must use JPA annotations and the _**field access**_, NOT the property access.

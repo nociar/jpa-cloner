@@ -34,33 +34,34 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import javax.persistence.Embeddable;
 import javax.persistence.Entity;
-import javax.persistence.OneToMany;
-import javax.persistence.OneToOne;
 
 import sk.nociar.jpacloner.JpaIntrospector.JpaClassInfo;
 import sk.nociar.jpacloner.graphs.EntityExplorer;
 import sk.nociar.jpacloner.graphs.GraphExplorer;
 import sk.nociar.jpacloner.graphs.PropertyFilter;
 
-
 /**
- * JpaCloner provides cloning of JPA entity subgraphs. There are three options for cloning:
+ * JpaCloner provides cloning of JPA entity subgraphs. Cloned entities will be instantiated as <b>raw classes</b>.
+ * The <b>raw class</b> means a class annotated by {@link Entity} or {@link Embeddable}, not a Hibernate proxy.
+ * Cloned entities will have all <b>basic properties</b> (non-relation properties) copied by default. 
+ * Advanced control over the <b>basic property</b> copying is supported via the {@link PropertyFilter}.
+ * There are three options for cloning:<br/><br/>
  * <ol>
  * <li> 
- * Cloning by string patterns which define <b>entity relations</b>. For description of patterns see the {@link GraphExplorer}.<br/>
- * <b>All basic properties</b> (non-relation columns) of entities are cloned by default in this case. Usage example:
+ * Cloning by string patterns which define <b>relations</b>. For description of patterns see the {@link GraphExplorer}.
+ * All <b>basic properties</b> of entities are copied by default in this case:
  * <pre>
  * Company clonedCompany = JpaCloner.clone(company, "department+.(boss|employees).address.(country|city|street)");</pre>
  * </li>
  * <li>
- * Cloning by {@link PropertyFilter} gives full control over the cloning process. <br/>
- * <b>Entity relations</b> and <b>basic properties</b> for cloning are defined by the filter implementation. Usage example:
+ * Cloning by {@link PropertyFilter} gives full control over the cloning process.
+ * <b>Relations</b> and <b>basic properties</b> for cloning are defined by the filter implementation:
  * <pre>
  * Company clonedCompany = JpaCloner.clone(company, new MyPropertyFilter());</pre>
  * </li>
  * <li>
- * Cloning by string patterns and {@link PropertyFilter}. <b>Entity relations</b> for cloning are defined by the string patterns.
- * <b>Basic properties</b> for cloning are defined by the filter implementation. Usage example:
+ * Cloning by string patterns and {@link PropertyFilter}. <b>Relations</b> for cloning are defined by the string patterns.
+ * <b>Basic properties</b> for cloning are defined by the filter implementation:
  * <pre>
  * PropertyFilter filter = new PropertyFilter() {
  *     public boolean isCloned(Object entity, String property) {
@@ -71,34 +72,25 @@ import sk.nociar.jpacloner.graphs.PropertyFilter;
  * Company clonedCompany = JpaCloner.clone(company, filter, "department+.(boss|employees).address.(country|city|street)");</pre>
  * </li>
  * </ol>
+ * Cloned <b>relations</b> will be standard java.util classes:<br/>
+ * {@link Set}-&gt;{@link HashSet}<br/>
+ * {@link Map}-&gt;{@link HashMap}<br/>
+ * {@link List}-&gt;{@link ArrayList}<br/>
+ * {@link SortedSet}-&gt;{@link TreeSet}<br/>
+ * {@link SortedMap}-&gt;{@link TreeMap}<br/>
+ * <br/>
+ * Cloning of a {@link Map} is supported via "key" and "value" properties e.g. "my.map.(key.a.b.c|value.x.y.z)".
+ * Please note that the cloning has also a side effect regarding the lazy loading. 
+ * All entities which will be cloned could be fetched from the DB. It is advisable
+ * (but not required) to perform the cloning inside a <b>transaction scope</b>.
+ * <br/><br/>
  * Requirements:
  * <ul>
  * <li>JPA entities must <b>correctly</b> implement the {@link Object#equals(Object obj)} 
  * method and the {@link Object#hashCode()} method!</li>
- * <li>JPA entities must use <b>field access</b>, not property access. 
- * Each field must have a corresponding <b>getter</b>.</li>
- * <li>Cloned entities will be instantiated as <b>raw classes</b>, not Hibernate proxy classes.
- * Raw classes means classes annotated by {@link Entity} or {@link Embeddable}.</li>
- * <li>Cloned entities will have all basic properties (i.e. columns) populated by default. 
- * Advanced control over the basic property cloning is supported via the {@link PropertyFilter}.</li>
- * <li>Relations to neighboring entities will be populated <b>only</b> if specified by the string patterns or the {@link PropertyFilter}, <code>null</code> otherwise.</li>
- * <li>{@link OneToMany#mappedBy()} and {@link OneToOne#mappedBy()} attributes are handled automatically</li>
- * <li>Cloned collections and maps will be the standard java.util classes:
- * <table>
- * <tr><th>Original</th><th></th><th>Clone</th></tr>
- * <tr><td>{@link List}</td><td>-&gt;</td><td>{@link ArrayList}</td></tr>
- * <tr><td>{@link SortedSet}</td><td>-&gt;</td><td>{@link TreeSet}</td></tr>
- * <tr><td>{@link Set}</td><td>-&gt;</td><td>{@link HashSet}</td></tr>
- * <tr><td>{@link SortedMap}</td><td>-&gt;</td><td>{@link TreeMap}</td></tr>
- * <tr><td>{@link Map}</td><td>-&gt;</td><td>{@link HashMap}</td></tr>
- * </table>
- * </li>
- * <li>Cloning of {@link Map} supports navigation via "key" and "value" properties e.g. "my.map.(key.a.b.c|value.x.y.z)"</li>
- * <li>A JpaCloner instance is NOT thread safe; prefer the usage of static clone(...) methods, which are.</li>
+ * <li>JPA entities must use <b>field access</b>, not property access.</li>
+ * <li>Each field must have a corresponding <b>getter</b>.</li>
  * </ul>
- * Please note that the cloning has also a side effect regarding the lazy loading. 
- * All entities which will be cloned must be fetched from the DB. It is advisable
- * (but not required) to perform the cloning inside a <b>transaction scope</b>.
  * 
  * @author Miroslav Nociar
  */
@@ -266,10 +258,6 @@ public class JpaCloner implements EntityExplorer {
 		return clone;
 	}
 
-	public Map<Object, Object> getOriginalToClone() {
-		return originalToClone;
-	}
-	
 	private static final Map<String, GraphExplorer> patternToExplorer = new ConcurrentHashMap<String, GraphExplorer>();
 	
 	private static GraphExplorer getExplorer(String pattern) {
@@ -411,10 +399,16 @@ public class JpaCloner implements EntityExplorer {
 		}
 	}
 	
+	/**
+	 * Copy all <b>basic properties</b> from the first entity to the second entity.
+	 */
 	public static <T, X extends T> void copy(T o1, X o2) {
 		copy(o1, o1, defaultPropertyFilter);
 	}
 	
+	/**
+	 * Copy filtered <b>basic properties</b> from the first entity to the second entity.
+	 */
 	public static <T, X extends T> void copy(T o1, X o2, PropertyFilter propertyFilter) {
 		JpaClassInfo classInfo = JpaIntrospector.getClassInfo(o1);
 		if (classInfo == null) {
