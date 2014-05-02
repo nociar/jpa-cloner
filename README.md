@@ -7,6 +7,19 @@ The project allows cloning of JPA entity _**subgraphs**_. Entity subgraphs are d
 - Cloned entities must use JPA annotations and the _**field access**_, NOT the property access.
 - Cloned entities must _**correctly**_ implement equals() and hashCode().
 
+Maven coordinates:
+```xml
+<dependency>
+    <groupId>com.github.nociar</groupId>
+    <artifactId>jpa-cloner</artifactId>
+    <version>1.0.0</version>
+</dependency>
+```
+
+## Changes in version 1.0.0 ##
+- project is exposed via the Maven Central Repository
+- optimization of relation fetching (OneToMany/ManyToMany before OneToOne)
+
 ## Changes in version 0.0.3 ##
 - the method **JpaCloner#copy** uses _**setter**_ methods whenever possible (this public method is also used by the cloning process)
 
