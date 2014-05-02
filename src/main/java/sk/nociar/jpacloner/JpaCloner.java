@@ -251,8 +251,8 @@ public class JpaCloner implements EntityExplorer {
 		} catch (Exception e) {
 			throw new IllegalStateException("Unable to clone: " + original, e);
 		}
-		// copy columns
-		copyColumns(original, clone, classInfo, propertyFilter);
+		// copy basic properties
+		copyProperties(original, clone, classInfo, propertyFilter);
 		// put in the cache
 		originalToClone.put(original, clone);
 		return clone;
@@ -388,10 +388,10 @@ public class JpaCloner implements EntityExplorer {
 	}
 
 	/**
-	 * Copy all columns from o1 to o2.
+	 * Copy properties (not relations) from o1 to o2.
 	 */
-	private static void copyColumns(Object o1, Object o2, JpaClassInfo classInfo, PropertyFilter propertyFilter) {
-		for (String property : classInfo.getColumns()) {
+	private static void copyProperties(Object o1, Object o2, JpaClassInfo classInfo, PropertyFilter propertyFilter) {
+		for (String property : classInfo.getProperties()) {
 			if (propertyFilter.test(o1, property)) {
 				Object value = JpaIntrospector.getProperty(o1, property);
 				JpaIntrospector.setProperty(o2, property, value);
@@ -411,9 +411,8 @@ public class JpaCloner implements EntityExplorer {
 	 */
 	public static <T, X extends T> void copy(T o1, X o2, PropertyFilter propertyFilter) {
 		JpaClassInfo classInfo = JpaIntrospector.getClassInfo(o1);
-		if (classInfo == null) {
-			return;
+		if (classInfo != null) {
+			copyProperties(o1, o2, classInfo, propertyFilter);
 		}
-		copyColumns(o1, o2, classInfo, propertyFilter);
 	}
 }

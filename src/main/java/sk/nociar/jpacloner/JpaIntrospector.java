@@ -65,7 +65,7 @@ public class JpaIntrospector implements EntityIntrospector {
 	 */
 	public static class JpaClassInfo {
 		private final Constructor<?> constructor;
-		private final List<String> columns;
+		private final List<String> properties;
 		private final List<String> relations;
 		private final Map<String, Field> fields = new HashMap<String, Field>();
 		private final Map<String, Method> getters = new HashMap<String, Method>();
@@ -80,8 +80,6 @@ public class JpaIntrospector implements EntityIntrospector {
 			} catch (NoSuchMethodException e) {
 				throw new IllegalStateException("Unable to find default constructor for class: " + clazz, e);
 			}
-			List<String> columns = new ArrayList<String>();
-			LinkedList<String> relations = new LinkedList<String>();
 			// getters & setters
 			for (Method m : clazz.getMethods()) {
 				if (Modifier.isStatic(m.getModifiers())) {
@@ -106,6 +104,8 @@ public class JpaIntrospector implements EntityIntrospector {
 				}
 			}
 			// fields
+			List<String> properties = new ArrayList<String>();
+			LinkedList<String> relations = new LinkedList<String>();
 			for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
 				for (Field f : c.getDeclaredFields()) {
 					if (Modifier.isStatic(f.getModifiers())) {
@@ -117,7 +117,7 @@ public class JpaIntrospector implements EntityIntrospector {
 					// add to maps
 					fields.put(name, f);
 					if (!isRelation(f)) {
-						columns.add(name);
+						properties.add(name);
 					} else {
 						OneToOne oneToOne = f.getAnnotation(OneToOne.class);
 						String mappedName = null;
@@ -151,7 +151,7 @@ public class JpaIntrospector implements EntityIntrospector {
 					}
 				}
 			}
-			this.columns = unmodifiableList(columns);
+			this.properties = unmodifiableList(properties);
 			this.relations = unmodifiableList(new ArrayList<String>(relations));
 		}
 		
@@ -169,8 +169,8 @@ public class JpaIntrospector implements EntityIntrospector {
 			return constructor;
 		}
 
-		public List<String> getColumns() {
-			return columns;
+		public List<String> getProperties() {
+			return properties;
 		}
 
 		public List<String> getRelations() {
