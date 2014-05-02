@@ -4,6 +4,8 @@
 	<groupId>com.github.nociar</groupId>
 	<artifactId>jpa-cloner</artifactId>
 	<version>1.0.0</version>
+	<packaging>jar</packaging>
+	<name>JPA Cloner</name>
 	<description>JPA Cloner allows cloning of JPA entity subgraphs.</description>
 	<url>https://github.com/nociar/jpa-cloner</url>
 
