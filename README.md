@@ -14,7 +14,7 @@ The project allows cloning of JPA entity _**subgraphs**_. Entity subgraphs are d
 Company company = entityManager.find(Company.class, companyId);
 Company clone1 = JpaCloner.clone(company);
 Company clone2 = JpaCloner.clone(company, "department*.employees");
-Company clone3 = JpaCloner.clone(company, "address", "department+.(boss|employees).address);
+Company clone3 = JpaCloner.clone(company, "address", "department+.(boss|employees).address");
 ```
 ```java
 Company company = entityManager.find(Company.class, companyId);
