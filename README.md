@@ -3,7 +3,6 @@
 
 The project allows cloning of JPA entity _**subgraphs**_. Entity subgraphs are defined by string patterns or by a custom _PropertyFilter_. The string patterns support operators to allow various expressions of property paths like "company.department+.(boss|employees).address.(country|city|street)". 
 
-## Maven coordinates
 ```xml
 <dependency>
     <groupId>com.github.nociar</groupId>
