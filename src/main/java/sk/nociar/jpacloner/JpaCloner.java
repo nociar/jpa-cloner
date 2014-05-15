@@ -17,6 +17,7 @@
  */
 package sk.nociar.jpacloner;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -166,18 +167,20 @@ public class JpaCloner implements EntityExplorer {
 		if (value instanceof Collection) {
 			// Collection property
 			explored = (Collection) value;
-			Collection clonedCollection;
-			if (explored instanceof SortedSet) {
-				// create a tree set with the same comparator (may be null)
-				clonedCollection = new TreeSet(((SortedSet) explored).comparator());
-			} else if (explored instanceof Set) {
-				// create a hash set
-				clonedCollection = new HashSet();
-			} else if (explored instanceof List) {
-				// create an array list
-				clonedCollection = new ArrayList(explored.size());
-			} else {
-				throw new IllegalArgumentException("Unsupported collection class: " + explored.getClass());
+			Collection clonedCollection = newCloneableCollection(explored, info);
+			if (clonedCollection == null) {
+				if (explored instanceof SortedSet) {
+					// create a tree set with the same comparator (may be null)
+					clonedCollection = new TreeSet(((SortedSet) explored).comparator());
+				} else if (explored instanceof Set) {
+					// create a hash set
+					clonedCollection = new HashSet();
+				} else if (explored instanceof List) {
+					// create an array list
+					clonedCollection = new ArrayList(explored.size());
+				} else {
+					throw new IllegalArgumentException("Unsupported collection class: " + explored.getClass());
+				}
 			}
 			for (Object o : explored) {
 				clonedCollection.add(getClone(o));
@@ -188,11 +191,13 @@ public class JpaCloner implements EntityExplorer {
 			// Map property
 			Map map = (Map) value;
 			explored = map.entrySet();
-			Map clonedMap;
-			if (value instanceof SortedMap) {
-				clonedMap = new TreeMap(((SortedMap) value).comparator());
-			} else {
-				clonedMap = new HashMap();
+			Map clonedMap = newCloneableMap(map, info);
+			if (clonedMap == null) {
+				if (value instanceof SortedMap) {
+					clonedMap = new TreeMap(((SortedMap) value).comparator());
+				} else {
+					clonedMap = new HashMap();
+				}
 			}
 			for (Object e : explored) {
 				Entry entry = (Entry) e;
@@ -210,6 +215,34 @@ public class JpaCloner implements EntityExplorer {
 		JpaIntrospector.setProperty(clone, property, clonedValue);
 
 		return explored;
+	}
+	
+	@SuppressWarnings("rawtypes")
+	private Collection newCloneableCollection(Collection original, JpaClassInfo info) {
+		if (original instanceof Cloneable && info.getCloner() != null) {
+			try {
+				Collection clonedCollection = (Collection) info.getCloner().invoke(original);
+				clonedCollection.clear();
+				return clonedCollection;
+			} catch (UnsupportedOperationException fallbackToOriginalImplementationSinceImmutable) {
+			} catch (IllegalAccessException unreachable) {	// guaranteed by JpaClassInfo
+			} catch (InvocationTargetException fallbackToOriginalImplementation) {}
+		}
+		return null;
+	}
+	
+	@SuppressWarnings("rawtypes")
+	private Map newCloneableMap(Map original, JpaClassInfo info) {
+		if (original instanceof Cloneable && info.getCloner() != null) {
+			try {
+				Map clonedMap = (Map) info.getCloner().invoke(original);
+				clonedMap.clear();
+				return clonedMap;
+			} catch (UnsupportedOperationException fallbackToOriginalImplementationSinceImmutable) {
+			} catch (IllegalAccessException unreachable) {	// guaranteed by JpaClassInfo
+			} catch (InvocationTargetException fallbackToOriginalImplementation) {}
+		}
+		return null;
 	}
 	
 	@SuppressWarnings("rawtypes")
