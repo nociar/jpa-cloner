@@ -71,6 +71,7 @@ public class JpaIntrospector implements EntityIntrospector {
 		private final Map<String, Method> getters = new HashMap<String, Method>();
 		private final Map<String, Method> setters = new HashMap<String, Method>();
 		private final Map<String, List<String>> mappedBy = new HashMap<String, List<String>>();
+		private final Method cloner;
 		
 		private JpaClassInfo(Class<?> clazz) {
 			try {
@@ -80,6 +81,7 @@ public class JpaIntrospector implements EntityIntrospector {
 			} catch (NoSuchMethodException e) {
 				throw new IllegalStateException("Unable to find default constructor for class: " + clazz, e);
 			}
+			Method cloner = null;
 			// getters & setters
 			for (Method m : clazz.getMethods()) {
 				if (Modifier.isStatic(m.getModifiers())) {
@@ -97,6 +99,8 @@ public class JpaIntrospector implements EntityIntrospector {
 				} else if (methodName.startsWith("set") && methodName.length() > 3 && m.getParameterTypes().length == 1) {
 					propertyName = methodName.substring(3);
 					map = setters;
+				} else if ("clone".equals(methodName) && Modifier.isPublic(m.getModifiers()) && !Modifier.isStatic(m.getModifiers()) && m.getParameterTypes().length == 0) {
+					cloner = m;
 				}
 				if (propertyName != null && !propertyName.isEmpty()) {
 					propertyName = Character.toLowerCase(propertyName.charAt(0)) + propertyName.substring(1);
@@ -153,6 +157,7 @@ public class JpaIntrospector implements EntityIntrospector {
 			}
 			this.properties = unmodifiableList(properties);
 			this.relations = unmodifiableList(new ArrayList<String>(relations));
+			this.cloner = cloner;
 		}
 		
 		private boolean isRelation(Field f) {
@@ -191,6 +196,10 @@ public class JpaIntrospector implements EntityIntrospector {
 
 		public List<String> getMappedBy(String property) {
 			return mappedBy.get(property);
+		}
+		
+		public Method getCloner() {
+			return cloner;
 		}
 	}
 	
