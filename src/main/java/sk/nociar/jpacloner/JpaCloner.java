@@ -22,6 +22,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -73,8 +75,8 @@ import sk.nociar.jpacloner.graphs.PropertyFilter;
  * </li>
  * </ol>
  * Cloned <b>relations</b> will be standard java.util classes:<br/>
- * {@link Set}-&gt;{@link HashSet}<br/>
- * {@link Map}-&gt;{@link HashMap}<br/>
+ * {@link Set}-&gt;{@link LinkedHashSet}<br/>
+ * {@link Map}-&gt;{@link LinkedHashMap}<br/>
  * {@link List}-&gt;{@link ArrayList}<br/>
  * {@link SortedSet}-&gt;{@link TreeSet}<br/>
  * {@link SortedMap}-&gt;{@link TreeMap}<br/>
@@ -172,7 +174,7 @@ public class JpaCloner implements EntityExplorer {
 				clonedCollection = new TreeSet(((SortedSet) explored).comparator());
 			} else if (explored instanceof Set) {
 				// create a hash set
-				clonedCollection = new HashSet();
+				clonedCollection = new LinkedHashSet();
 			} else if (explored instanceof List) {
 				// create an array list
 				clonedCollection = new ArrayList(explored.size());
@@ -192,7 +194,7 @@ public class JpaCloner implements EntityExplorer {
 			if (value instanceof SortedMap) {
 				clonedMap = new TreeMap(((SortedMap) value).comparator());
 			} else {
-				clonedMap = new HashMap();
+				clonedMap = new LinkedHashMap();
 			}
 			for (Object e : explored) {
 				Entry entry = (Entry) e;

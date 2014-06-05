@@ -1,3 +1,6 @@
+## 1.0.1
+- use LinkedHashSet and LinkedHashMap for cloned entities
+
 ## 1.0.0
 - project is exposed via the Maven Central Repository
 - optimization of relation fetching (OneToMany/ManyToMany before OneToOne)
