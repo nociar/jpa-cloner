@@ -3,7 +3,7 @@ package sk.nociar.jpacloner.entities;
 import javax.persistence.Entity;
 
 @Entity
-public class WrongEntity extends BaseEntity {
-	private int i;
-
+public class DummyEntity extends BaseEntity {
+	public int i;
+	public String s;
 }

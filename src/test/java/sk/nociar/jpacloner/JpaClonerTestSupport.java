@@ -20,6 +20,8 @@ import sk.nociar.jpacloner.graphs.PropertyFilter;
 public abstract class JpaClonerTestSupport {
 	private Node n1;
 
+	private final String allProperties = "*+";
+	
 	private void addChildren(Node parent, Node... children ) {
 		for (int i = 0; i < children.length; i++) {
 			Node child = children[i];
@@ -122,13 +124,6 @@ public abstract class JpaClonerTestSupport {
 		}
 	}
 
-	private static final PropertyFilter defaultPropertyFilter = new PropertyFilter() {
-		@Override
-		public boolean test(Object entity, String property) {
-			return true;
-		}
-	};
-
 	public void testClone1() {
 		Node o1 = getOriginal();
 		Node o1_1 = o1.getChildren().get(1).getChild();
@@ -140,8 +135,9 @@ public abstract class JpaClonerTestSupport {
 		Node o1_2_2 = o1_2.getChildren().get(2).getChild();
 		Node o1_2_3 = o1_2.getChildren().get(3).getChild();
 		
-		Node c1 = JpaCloner.clone(o1, "(children.value.child)*.(point|(foo|baz).bar.dummy_property)");
-		JpaExplorer jpaExplorer = JpaExplorer.doExplore(c1, defaultPropertyFilter);
+		String base = "point|(foo|baz).bar.dummy_property";
+		Node c1 = JpaCloner.clone(o1, base, "(children.value.child)+.(" + base + ")");
+		JpaExplorer jpaExplorer = JpaExplorer.doExplore(c1, allProperties);
 		// asserts counts
 		assertCloned(jpaExplorer, Node.class, 9);
 		assertCloned(jpaExplorer, Edge.class, 10);
@@ -182,8 +178,9 @@ public abstract class JpaClonerTestSupport {
 	}
 
 	public void testClone2() {
-		Node clone = JpaCloner.clone(getOriginal(), "(children.value.child)*.(foo|baz)");
-		JpaExplorer jpaExplorer = JpaExplorer.doExplore(clone, defaultPropertyFilter);
+		String base = "fo?|b*z";
+		Node clone = JpaCloner.clone(getOriginal(), base, "(children.value.child)+.(" + base + ")");
+		JpaExplorer jpaExplorer = JpaExplorer.doExplore(clone, allProperties);
 		// do some asserts
 		assertCloned(jpaExplorer, Node.class, 9);
 		assertCloned(jpaExplorer, Edge.class, 10);
@@ -194,8 +191,9 @@ public abstract class JpaClonerTestSupport {
 	}
 
 	public void testClone3() {
-		Node clone = JpaCloner.clone(getOriginal(), "(children.value.child)*.(foo.bar|baz.bar)");
-		JpaExplorer jpaExplorer = JpaExplorer.doExplore(clone, defaultPropertyFilter);
+		String base = "foo.bar|baz.bar";
+		Node clone = JpaCloner.clone(getOriginal(), base, "(children.value.child)+.(" + base + ")");
+		JpaExplorer jpaExplorer = JpaExplorer.doExplore(clone, allProperties);
 		// do some asserts
 		assertCloned(jpaExplorer, Node.class, 9);
 		assertCloned(jpaExplorer, Edge.class, 10);
@@ -206,8 +204,9 @@ public abstract class JpaClonerTestSupport {
 	}
 
 	public void testClone4() {
-		Node clone = JpaCloner.clone(getOriginal(), "(parents.parent)*|(children.value.child)*.(baz$.bar)");
-		JpaExplorer jpaExplorer = JpaExplorer.doExplore(clone, defaultPropertyFilter);
+		String base = "(baz$.bar)";
+		Node clone = JpaCloner.clone(getOriginal(), base, "(parents.parent)+|(children.value.child)+." + base);
+		JpaExplorer jpaExplorer = JpaExplorer.doExplore(clone, allProperties);
 		// do some asserts
 		assertCloned(jpaExplorer, Node.class, 9);
 		assertCloned(jpaExplorer, Edge.class, 10);
@@ -226,8 +225,9 @@ public abstract class JpaClonerTestSupport {
 				return !"id".equals(property);
 			}
 		};
-		Node clone = JpaCloner.clone(getOriginal(), filter, "(children.value.child)*.(foo|baz).bar");
-		JpaExplorer jpaExplorer = JpaExplorer.doExplore(clone, defaultPropertyFilter);
+		String base = "((foo|baz).bar)";
+		Node clone = JpaCloner.clone(getOriginal(), filter, base, "(children.value.child)+." + base);
+		JpaExplorer jpaExplorer = JpaExplorer.doExplore(clone, allProperties);
 		// do some asserts
 		assertCloned(jpaExplorer, Node.class, 9);
 		assertCloned(jpaExplorer, Edge.class, 10);
@@ -242,7 +242,7 @@ public abstract class JpaClonerTestSupport {
 	}
 	
 	public void testExplore() {
-		JpaExplorer jpaExplorer = JpaExplorer.doExplore(getOriginal(), defaultPropertyFilter);
+		JpaExplorer jpaExplorer = JpaExplorer.doExplore(getOriginal(), allProperties);
 		// do some asserts
 		assertCloned(jpaExplorer, Node.class, 9);
 		assertCloned(jpaExplorer, Edge.class, 10);
@@ -256,7 +256,7 @@ public abstract class JpaClonerTestSupport {
 			public boolean test(Object entity, String property) {
 				return !"point".equals(property) && !"bar".equals(property);
 			}
-		});
+		}, allProperties);
 		
 		// do some asserts
 		assertCloned(jpaExplorer, Node.class, 9);
@@ -266,7 +266,8 @@ public abstract class JpaClonerTestSupport {
 		assertCloned(jpaExplorer, Baz.class, 2);
 		assertCloned(jpaExplorer, Bar.class, 0);
 		
-		jpaExplorer = JpaExplorer.doExplore(getOriginal(), "(children.value.child)*.(foo|baz)");
+		String base = "(foo|baz)";
+		jpaExplorer = JpaExplorer.doExplore(getOriginal(), base, "(children.value.child)+." + base);
 		
 		// do some asserts
 		assertCloned(jpaExplorer, Node.class, 9);

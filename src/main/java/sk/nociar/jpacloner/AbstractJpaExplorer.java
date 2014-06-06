@@ -27,6 +27,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -45,18 +46,35 @@ import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
 
-import sk.nociar.jpacloner.graphs.EntityIntrospector;
+import sk.nociar.jpacloner.graphs.EntityExplorer;
+import sk.nociar.jpacloner.graphs.PropertyFilter;
 
 /**
- * JPA entity introspector. JPA entities must use <b>field access</b>, not property access.
+ * Simple explorer of JPA entities. JPA entities must use <b>field access</b>, not property access.
  * 
  * @author Miroslav Nociar
  */
-public class JpaIntrospector implements EntityIntrospector {
-	private JpaIntrospector() {
+public abstract class AbstractJpaExplorer implements EntityExplorer {
+	
+	/**
+	 * Default property filter.
+	 */
+	public static final PropertyFilter defaultPropertyFilter = new PropertyFilter() {
+		@Override
+		public boolean test(Object entity, String property) {
+			return true;
+		}
+	};
+
+	protected final PropertyFilter propertyFilter;
+
+	protected AbstractJpaExplorer() {
+		this(defaultPropertyFilter);
 	}
 	
-	public static final JpaIntrospector INSTANCE = new JpaIntrospector();
+	protected AbstractJpaExplorer(PropertyFilter propertyFilter) {
+		this.propertyFilter = propertyFilter;
+	}
 	
 	/**
 	 * Info about JPA class.
@@ -64,6 +82,7 @@ public class JpaIntrospector implements EntityIntrospector {
 	 * @author Miroslav Nociar
 	 */
 	public static class JpaClassInfo {
+		private final Class<?> jpaClass;
 		private final Constructor<?> constructor;
 		private final List<String> properties;
 		private final List<String> relations;
@@ -72,7 +91,8 @@ public class JpaIntrospector implements EntityIntrospector {
 		private final Map<String, Method> setters = new HashMap<String, Method>();
 		private final Map<String, List<String>> mappedBy = new HashMap<String, List<String>>();
 		
-		private JpaClassInfo(Class<?> clazz) {
+		private JpaClassInfo(final Class<?> clazz) {
+			this.jpaClass = clazz;
 			try {
 				// find default constructor
 				constructor = clazz.getDeclaredConstructor();
@@ -108,7 +128,7 @@ public class JpaIntrospector implements EntityIntrospector {
 			LinkedList<String> relations = new LinkedList<String>();
 			for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
 				for (Field f : c.getDeclaredFields()) {
-					if (Modifier.isStatic(f.getModifiers())) {
+					if (Modifier.isStatic(f.getModifiers()) || Modifier.isFinal(f.getModifiers())) {
 						continue;
 					}
 					String name = f.getName();
@@ -144,10 +164,6 @@ public class JpaIntrospector implements EntityIntrospector {
 								mappedBy.put(name, singletonList(mappedName));
 							}
 						}
-					}
-					// check if the field has corresponding getter
-					if (!getters.containsKey(name)) {
-						throw new IllegalStateException("The class: " + clazz + " does not have a getter for field: " + name);
 					}
 				}
 			}
@@ -192,15 +208,20 @@ public class JpaIntrospector implements EntityIntrospector {
 		public List<String> getMappedBy(String property) {
 			return mappedBy.get(property);
 		}
+
+		public Class<?> getJpaClass() {
+			return jpaClass;
+		}
 	}
 	
 	private static final ConcurrentMap<Class<?>, JpaClassInfo> classInfo = new ConcurrentHashMap<Class<?>, JpaClassInfo>();
 	
 	public static JpaClassInfo getClassInfo(Object object) {
-		if (object == null) {
-			return null;
-		}
-		Class<?> clazz = getJpaClass(object);
+		return object == null ? null : getClassInfo(object.getClass());
+	}
+
+	public static JpaClassInfo getClassInfo(Class<?> clazz) {
+		clazz = getJpaClass(clazz);
 		if (clazz == null) {
 			return null;
 		}
@@ -216,24 +237,33 @@ public class JpaIntrospector implements EntityIntrospector {
 	/**
 	 * Returns the raw JPA class (i.e. annotated by {@link Entity} or {@link Embeddable}) or <code>null</code>.
 	 */
-	public static Class<?> getJpaClass(Object object) {
-		if (object == null) {
-			return null;
-		}
-		for (Class<?> c = object.getClass(); c != null; c = c.getSuperclass()) {
+	public static Class<?> getJpaClass(Class<?> c) {
+		while (c != null) {
 			if (c.getAnnotation(Entity.class) != null || c.getAnnotation(Embeddable.class) != null) {
 				return c;
 			}
+			c = c.getSuperclass();
 		}
 		return null;
 	}
 	
 	public static Object getProperty(Object object, String property) {
-		Method getter = getClassInfo(object).getGetter(property);
-		try {
-			return getter.invoke(object);
-		} catch (Exception e) {
-			throw new RuntimeException("Invocation problem object: " + object + ", property: " + property, e);
+		JpaClassInfo info = getClassInfo(object);
+		Method getter = info.getGetter(property);
+		if (getter != null) {
+			try {
+				return getter.invoke(object);
+			} catch (Exception e) {
+				throw new RuntimeException("Invocation problem object: " + object + ", property: " + property, e);
+			}
+		} else {
+			// no getter, access the field directly
+			Field field = info.getField(property);
+			try {
+				return field.get(object);
+			} catch (IllegalAccessException e) {
+				throw new RuntimeException(e);
+			}
 		}
 	}
 
@@ -247,7 +277,7 @@ public class JpaIntrospector implements EntityIntrospector {
 				throw new RuntimeException("Invocation problem object: " + object + ", property: " + property, e);
 			}
 		} else {
-			// no setter, try field access
+			// no setter, access the field directly
 			Field field = info.getField(property);
 			try {
 				field.set(object, value);
@@ -266,7 +296,59 @@ public class JpaIntrospector implements EntityIntrospector {
 		}
 
 		JpaClassInfo info = getClassInfo(object);
-		return info == null ? null : info.getRelations();
+		return info == null ? Collections.<String>emptyList() : info.getRelations();
 	}
+
+	@Override
+	@SuppressWarnings({ "rawtypes" })
+	public final Collection<?> explore(Object entity, String property) {
+		if (entity == null || property == null) {
+			return null;
+		}
+		
+		if (entity instanceof Entry) {
+			Entry entry = (Entry) entity;
+			// handle Map.Entry#getKey() and Map.Entry#getValue()
+			if ("key".equals(property)) {
+				return Collections.singleton(entry.getKey());
+			} else if ("value".equals(property)) {
+				return Collections.singleton(entry.getValue());
+			} else {
+				throw new IllegalArgumentException("Map.Entry does not have property: " + property);
+			}
+		}
+		
+		if (!propertyFilter.test(entity, property)) {
+			return null;
+		}
+		
+		JpaClassInfo info = getClassInfo(entity);
+		if (info == null || !info.getRelations().contains(property)) {
+			return null;
+		}
+		
+		Object value = getProperty(entity, property);
+
+		if (value == null) {
+			return null;
+		} else if (value instanceof Collection) {
+			// Collection property
+			Collection collection = (Collection) value;
+			explore(entity, property, collection);
+			return collection;
+		} else if (value instanceof Map) {
+			// Map property
+			Map map = (Map) value;
+			explore(entity, property, map);
+			return map.entrySet();
+		}
+		// singular property
+		explore(entity, property, value);
+		return Collections.singleton(value);
+	}
+	
+	protected abstract void explore(Object entity, String property, Collection<?> collection);
+	protected abstract void explore(Object entity, String property, Map<?, ?> map);
+	protected abstract void explore(Object entity, String property, Object value);
 
 }

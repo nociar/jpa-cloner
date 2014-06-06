@@ -21,12 +21,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
-import sk.nociar.jpacloner.JpaIntrospector.JpaClassInfo;
-import sk.nociar.jpacloner.graphs.EntityExplorer;
 import sk.nociar.jpacloner.graphs.GraphExplorer;
 import sk.nociar.jpacloner.graphs.PropertyFilter;
 
@@ -36,64 +32,40 @@ import sk.nociar.jpacloner.graphs.PropertyFilter;
  * @author Miroslav Nociar
  *
  */
-public class JpaExplorer implements EntityExplorer {
+public class JpaExplorer extends AbstractJpaExplorer {
 	
 	private final Set<Object> entities = new HashSet<Object>();
 	
-	@SuppressWarnings({ "rawtypes", "unchecked" })
-	@Override
-	public Collection<Object> explore(Object entity, String property) {
-		if (entity instanceof Entry) {
-			Entry entry = (Entry) entity;
-			// handle Map.Entry#getKey() and Map.Entry#getValue()
-			if ("key".equals(property)) {
-				return Collections.singleton(entry.getKey());
-			} else if ("value".equals(property)) {
-				return Collections.singleton(entry.getValue());
-			} else {
-				throw new IllegalArgumentException("Map.Entry does not have property: " + property);
-			}
-		}
-		
-		JpaClassInfo info = JpaIntrospector.getClassInfo(entity);
-		if (info == null || !info.getRelations().contains(property)) {
-			return null;
-		}
-		
-		addJpaObject(entity);
-		
-		Object value = JpaIntrospector.getProperty(entity, property);
-
-		if (value == null) {
-			return null;
-		}
-
-		if (value instanceof Collection) {
-			// Collection property
-			Collection collection = (Collection) value;
-			for (Object object : collection) {
-				addJpaObject(object);	
-			}
-			return collection;
-		} else if (value instanceof Map) {
-			// Map property
-			Map map = ((Map) value);
-			for (Object object : map.keySet()) {
-				addJpaObject(object);
-			}
-			for (Object object : map.values()) {
-				addJpaObject(object);
-			}
-			return map.entrySet();
-		} else {
-			// singular property
-			addJpaObject(value);
-			return Collections.singleton(value);
-		}
+	public JpaExplorer() {
+		super();
 	}
 	
+	public JpaExplorer(PropertyFilter propertyFilter) {
+		super(propertyFilter);
+	}
+	
+	@Override
+	protected void explore(Object entity, String property, Collection<?> collection) {
+		for (Object object : collection) {
+			addJpaObject(object);
+		}
+	}
+
+	@Override
+	protected void explore(Object entity, String property, Map<?, ?> map) {
+		for (Map.Entry<?, ?> entry : map.entrySet()) {
+			addJpaObject(entry.getKey());
+			addJpaObject(entry.getValue());
+		}
+	}
+
+	@Override
+	protected void explore(Object entity, String property, Object value) {
+		addJpaObject(value);
+	}
+
 	private void addJpaObject(Object object) {
-		if (JpaIntrospector.getJpaClass(object) != null) {
+		if (getClassInfo(object) != null) {
 			entities.add(object);
 		}
 	}
@@ -114,34 +86,35 @@ public class JpaExplorer implements EntityExplorer {
 		return set;
 	}
 
-	private static final Map<String, GraphExplorer> patternToExplorer = new ConcurrentHashMap<String, GraphExplorer>();
-	
-	private static GraphExplorer getExplorer(String pattern) {
-		GraphExplorer explorer = patternToExplorer.get(pattern);
-		if (explorer == null) {
-			explorer = new GraphExplorer(pattern);
-			patternToExplorer.put(pattern, explorer);
-		}
-		return explorer;
-	}
-	
-	private static void explore(Object root, JpaExplorer jpaExplorer, String... patterns) {
-		jpaExplorer.addJpaObject(root);
-		if (patterns != null) {
-			for (String pattern : patterns) {
-				GraphExplorer graphExplorer = getExplorer(pattern);
-				graphExplorer.explore(root, jpaExplorer);
-			}
-		}
-	}
-	
 	/**
 	 * Explores the passed JPA entity. The explored relations are specified by string patters. 
 	 * For description of patterns see the {@link GraphExplorer}.
 	 */
 	public static JpaExplorer doExplore(Object root, String... patterns) {
 		JpaExplorer jpaExplorer = new JpaExplorer();
-		explore(root, jpaExplorer, patterns);
+		jpaExplorer.addJpaObject(root);
+		if (patterns != null) {
+			for (String pattern : patterns) {
+				GraphExplorer graphExplorer = GraphExplorer.get(pattern);
+				graphExplorer.explore(Collections.singleton(root), jpaExplorer);
+			}
+		}
+		return jpaExplorer;
+	}
+	
+	/**
+	 * Explores the passed JPA entity. The explored relations are specified by string patters. 
+	 * For description of patterns see the {@link GraphExplorer}.
+	 */
+	public static JpaExplorer doExplore(Object root, PropertyFilter propertyFilter, String... patterns) {
+		JpaExplorer jpaExplorer = new JpaExplorer(propertyFilter);
+		jpaExplorer.addJpaObject(root);
+		if (patterns != null) {
+			for (String pattern : patterns) {
+				GraphExplorer graphExplorer = GraphExplorer.get(pattern);
+				graphExplorer.explore(Collections.singleton(root), jpaExplorer);
+			}
+		}
 		return jpaExplorer;
 	}
 
@@ -151,33 +124,14 @@ public class JpaExplorer implements EntityExplorer {
 	 */
 	public static JpaExplorer doExplore(Collection<?> collection, String... patterns) {
 		JpaExplorer jpaExplorer = new JpaExplorer();
-		for (Object root : collection) {
-			explore(root, jpaExplorer, patterns);
+		if (patterns != null) {
+			for (String pattern : patterns) {
+				GraphExplorer graphExplorer = GraphExplorer.get(pattern);
+				graphExplorer.explore(collection, jpaExplorer);
+			}
 		}
-		return jpaExplorer;
-	}
-
-	/**
-	 * Explores the passed JPA entity by filter. The property filter controls
-	 * the exploring of entity relations.
-	 */
-	public static JpaExplorer doExplore(Object root, PropertyFilter filter) {
-		JpaExplorer jpaExplorer = new JpaExplorer();
-		jpaExplorer.addJpaObject(root);
-		GraphExplorer.explore(root, new HashSet<Object>(), jpaExplorer, JpaIntrospector.INSTANCE, filter);
-		return jpaExplorer; 
-	}
-	
-	/**
-	 * Explores a collection of JPA entities by filter. The property filter controls
-	 * the exploring of entity relations.
-	 */
-	public static JpaExplorer doExplore(Collection<?> collection, PropertyFilter filter) {
-		JpaExplorer jpaExplorer = new JpaExplorer();
-		Set<Object> exploredEntities = new HashSet<Object>();
 		for (Object root : collection) {
 			jpaExplorer.addJpaObject(root);
-			GraphExplorer.explore(root, exploredEntities, jpaExplorer, JpaIntrospector.INSTANCE, filter);
 		}
 		return jpaExplorer;
 	}

@@ -13,8 +13,8 @@ public class DataConfig {
 	public DataSource dataSource() {
 		return new EmbeddedDatabaseBuilder()
 				.setType(EmbeddedDatabaseType.HSQL)
-				.addScript("classpath:sk/nociar/entitycloner/sql/schema.sql")
-				.addScript("classpath:sk/nociar/entitycloner/sql/test-data.sql")
+				.addScript("classpath:schema.sql")
+				.addScript("classpath:test-data.sql")
 				.build();
 	}
 

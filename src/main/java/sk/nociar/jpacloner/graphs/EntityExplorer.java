@@ -38,6 +38,11 @@ public interface EntityExplorer {
 	 *            the property (edge)
 	 * @return a collection of explored entities or <code>null</code>.
 	 */
-	public Collection<Object> explore(Object entity, String property);
+	public Collection<?> explore(Object entity, String property);
+	
+	/** 
+	 * Returns a collection of properties for an entity, may not return the <code>null</code> value.
+	 */
+	public Collection<String> getProperties(Object entity);
 
 }

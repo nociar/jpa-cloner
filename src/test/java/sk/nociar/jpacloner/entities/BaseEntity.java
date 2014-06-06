@@ -5,7 +5,7 @@ import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.MappedSuperclass;
 
-import sk.nociar.jpacloner.JpaIntrospector;
+import sk.nociar.jpacloner.AbstractJpaExplorer;
 
 @MappedSuperclass
 public class BaseEntity {
@@ -30,8 +30,8 @@ public class BaseEntity {
 			return true;
 		}
 		// get JPA classes (non-proxy) 
-		Class<?> thisClass = JpaIntrospector.getJpaClass(this);
-		Class<?> otherClass = JpaIntrospector.getJpaClass(other);
+		Class<?> thisClass = AbstractJpaExplorer.getJpaClass(this.getClass());
+		Class<?> otherClass = AbstractJpaExplorer.getJpaClass(other.getClass());
 
 		if (thisClass != otherClass) {
 			return false;

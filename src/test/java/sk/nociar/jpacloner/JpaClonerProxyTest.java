@@ -10,8 +10,9 @@ import sk.nociar.jpacloner.entities.Edge;
 import sk.nociar.jpacloner.entities.Foo;
 import sk.nociar.jpacloner.entities.Node;
 import sk.nociar.jpacloner.entities.Point;
-import sk.nociar.jpacloner.entities.WrongEntity;
+import sk.nociar.jpacloner.entities.DummyEntity;
 import sk.nociar.jpacloner.graphs.GraphExplorer;
+import sk.nociar.jpacloner.graphs.PropertyFilter;
 
 public class JpaClonerProxyTest {
 	
@@ -117,45 +118,65 @@ public class JpaClonerProxyTest {
 		JpaCloner jpaCloner = new JpaCloner();
 		Assert.assertNull(jpaCloner.getClone(null));
 	}
+	
+	@Test
+	public void testNoGetter() {
+		DummyEntity dummy = new DummyEntity();
+		dummy.setId(123);
+		dummy.i = 666;
+		dummy.s = "hello world";
+		DummyEntity clone = JpaCloner.clone(dummy);
+		Assert.assertNotSame(dummy, clone);
+		Assert.assertEquals(dummy, clone);
+		Assert.assertEquals(dummy.i, clone.i);
+		Assert.assertEquals(dummy.s, clone.s);
+		
+		clone = JpaCloner.clone(dummy, new PropertyFilter() {
+			@Override
+			public boolean test(Object entity, String property) {
+				return !"i".equals(property);
+			}
+		});
+		Assert.assertEquals(0, clone.i);
+		Assert.assertEquals("hello world", clone.s);
+	}
 
 	@Test
 	public void testNoException() {
 		JpaCloner.clone(new NodeProxy(), "bar", "xxx", "(yyy)");
-	}
-
-	@Test(expected = RuntimeException.class)
-	public void testException() {
-		JpaCloner.clone(new WrongEntity());
+		GraphExplorer.get("children.*");
+		GraphExplorer.get("chil*n");
+		;
 	}
 
 	@Test(expected = RuntimeException.class)
 	public void testException1() {
-		new GraphExplorer("(children");
+		GraphExplorer.get("(children");
 	}
 
 	@Test(expected = RuntimeException.class)
 	public void testException2() {
-		new GraphExplorer("children)");
+		GraphExplorer.get("children)");
 	}
 	
 	@Test(expected = RuntimeException.class)
 	public void testException3() {
-		new GraphExplorer("*children");
+		GraphExplorer.get(".children");
 	}
 
 	@Test(expected = RuntimeException.class)
 	public void testException4() {
-		new GraphExplorer(".children");
+		GraphExplorer.get("children.");
 	}
 
 	@Test(expected = RuntimeException.class)
 	public void testException5() {
-		new GraphExplorer("children.");
+		GraphExplorer.get("$");
 	}
-
+	
 	@Test(expected = RuntimeException.class)
 	public void testException6() {
-		new GraphExplorer("$");
+		GraphExplorer.get("(aaa)*");
 	}
 	
 }

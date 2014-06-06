@@ -19,183 +19,87 @@ package sk.nociar.jpacloner.graphs;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Generic explorer of paths in a graph (thread safe implementation). It is
- * required that the graph is stable i.e. does not change during the exploring.
- * The explorer will generate property paths upon the pattern passed in the
- * constructor, see {@link GraphExplorer#GraphExplorer(String)}. The pattern
- * supports following operators:
+ * Generic explorer of paths in a graph. It is required that the graph is stable
+ * i.e. does not change during the exploring. The explorer will generate
+ * property paths upon the pattern passed in the factory method, see
+ * {@link GraphExplorer#get(String)}. The pattern supports following operators:
  * <ul>
  * <li>Dot "." separates paths.</li>
- * <li>Star "*" generates any number of preceding path (including zero).</li>
  * <li>Plus "+" generates at least one preceding path.</li>
  * <li>Split "|" divides the path into two ways.</li>
  * <li>Terminator "$" ends the preceding path.</li>
  * <li>Parentheses "(", ")" groups the paths.</li>
+ * <li>Wildcards "*", "?" in property names.</li>
  * </ul>
  * Some examples follow:
  * <ul>
- * <li>project.devices.interfaces</li>
- * <li>school.teachers.lessonToPupils.(key.class|value.parents)</li>
- * <li>(children.child)*.(nodeType|attributes.attributeType)</li>
- * <li>company.department*.(boss|employees).address.(country|city|street)</li>
+ * <li>device.*</li>
+ * <li>device.(interfaces.type|driver.author)</li>
+ * <li>company.department+.(boss|employees).address</li>
+ * <li>*+</li>
  * </ul>
  * 
- * <b>NOTE</b>: Entities MUST correctly implement the
- * {@link Object#equals(Object obj)} method and the {@link Object#hashCode()}
- * method!
+ * <b>NOTE</b>: Entities MUST correctly implement
+ * {@link Object#equals(Object obj)} and {@link Object#hashCode()}.
  * 
  * @author Miroslav Nociar
  */
-public final class GraphExplorer {
-
-	private interface Explorer {
-		public Collection<Object> explore(Object entity, EntityExplorer nodeExplorer);
-	}
-
-	private final class Literal implements Explorer {
-		private final String property;
-
-		Literal(String property) {
-			this.property = property;
-		}
-
-		@Override
-		public Collection<Object> explore(Object entity, EntityExplorer nodeExplorer) {
-			Collection<Object> value = nodeExplorer.explore(entity, property);
-			return value == null ? Collections.emptySet() : value;
-		}
-	}
-
-	private final class Dot implements Explorer {
-		private final Explorer a;
-		private final Explorer b;
-
-		Dot(Explorer a, Explorer b) {
-			this.a = a;
-			this.b = b;
-		}
-
-		@Override
-		public Collection<Object> explore(Object entity, EntityExplorer nodeExplorer) {
-			Set<Object> exploredNodes = new HashSet<Object>();
-			for (Object o : a.explore(entity, nodeExplorer)) {
-				exploredNodes.addAll(b.explore(o, nodeExplorer));
-			}
-			return exploredNodes;
-		}
-	}
-
-	private final class Or implements Explorer {
-		private final Explorer a;
-		private final Explorer b;
-
-		Or(Explorer a, Explorer b) {
-			this.a = a;
-			this.b = b;
-		}
-
-		@Override
-		public Collection<Object> explore(Object entity, EntityExplorer nodeExplorer) {
-			Set<Object> exploredNodes = new HashSet<Object>(a.explore(entity, nodeExplorer));
-			exploredNodes.addAll(b.explore(entity, nodeExplorer));
-			return exploredNodes;
-		}
-	}
-
-	private final class Multi implements Explorer {
-		private final Explorer child;
-		private final String operation;
-
-		Multi(Explorer child, String operation) {
-			this.child = child;
-			this.operation = operation;
-		}
-
-		@Override
-		public Collection<Object> explore(Object entity, EntityExplorer nodeExplorer) {
-			Set<Object> explored = new HashSet<Object>();
-			if ("*".equals(operation)) {
-				// operator * returns at least the passed entity
-				explored.add(entity);
-			}
-
-			Set<Object> next = new HashSet<Object>();
-			next.add(entity);
-			do {
-				Set<Object> current = next;
-				next = new HashSet<Object>();
-				for (Object o : current) {
-					next.addAll(child.explore(o, nodeExplorer));
-				}
-				// remove all explored nodes (optimization & prevention of cycles)
-				next.removeAll(explored);
-				explored.addAll(next);
-			} while (!next.isEmpty());
-
-			return explored;
-		}
-	}
-	
-	private final class Terminator implements Explorer {
-		private final Explorer child;
-
-		Terminator(Explorer child) {
-			this.child = child;
-		}
-
-		@Override
-		public Collection<Object> explore(Object entity, EntityExplorer nodeExplorer) {
-			// Explore the node an return the empty list.
-			child.explore(entity, nodeExplorer);
-			return Collections.emptyList();
-		}
-	}
-
-	private final Explorer impl;
+public abstract class GraphExplorer {
 
 	private static final Pattern p;
-	private static final Set<String> operators;
-	private static final Map<String, Integer> operatorToPriority;
+	private static final Set<String> operators = new HashSet<String>();
+	private static final Map<String, Integer> operatorToPriority = new HashMap<String, Integer>();
 	private static final int LITERAL_PRIORITY = 10;
 
 	static {
-		// init pattern
-		p = Pattern.compile("\\w+|\\.|\\||\\(|\\)|\\*|\\+|\\$");
 		// init operators
-		Set<String> set = new HashSet<String>();
-		set.add("(");
-		set.add(")");
-		set.add(".");
-		set.add("|");
-		set.add("*");
-		set.add("+");
-		set.add("$");
-		operators = Collections.unmodifiableSet(set);
+		operators.add("(");
+		operators.add(")");
+		operators.add(".");
+		operators.add("|");
+		operators.add("+");
+		operators.add("$");
 		// init operator priorities
-		Map<String, Integer> map = new HashMap<String, Integer>();
-		map.put("|", 1);
-		map.put(".", 2);
-		map.put("*", 3);
-		map.put("+", 3);
-		map.put("$", 4);
-		operatorToPriority = Collections.unmodifiableMap(map);
+		operatorToPriority.put("|", 1);
+		operatorToPriority.put(".", 2);
+		operatorToPriority.put("+", 3);
+		operatorToPriority.put("$", 4);
+		// init pattern
+		StringBuilder sb = new StringBuilder();
+		sb.append("[");
+		for (String op : operators) {
+			sb.append("\\").append(op);
+		}
+		sb.append("]|[^\\s");
+		for (String op : operators) {
+			sb.append("\\").append(op);
+		}
+		sb.append("]+");
+		p = Pattern.compile(sb.toString());
 	}
 
-	public GraphExplorer(String pattern) {
-		impl = getExplorer(pattern);
-	}
+	private static final Map<String, GraphExplorer> cache = new ConcurrentHashMap<String, GraphExplorer>();
 
-	private Explorer getExplorer(String pattern) {
+	/**
+	 * Factory method for complex {@link GraphExplorer}. Returned instance is
+	 * thread safe i.e. can be used by multiple threads in parallel.
+	 */
+	public static GraphExplorer get(String pattern) {
+		// check the cache first
+		GraphExplorer explorer = cache.get(pattern);
+		if (explorer != null) {
+			return explorer;
+		}
 		Matcher m = p.matcher(pattern);
 		// evaluate priority of each token
 		List<String> tokens = new ArrayList<String>();
@@ -227,10 +131,13 @@ public final class GraphExplorer {
 			throw new IllegalArgumentException("Wrong parentheses!");
 		}
 
-		return getExplorer(tokens, priorities);
+		explorer = getExplorer(tokens, priorities);
+		// save in the cache
+		cache.put(pattern, explorer);
+		return explorer;
 	}
 
-	private Explorer getExplorer(List<String> tokens, List<Integer> priorities) {
+	private static GraphExplorer getExplorer(List<String> tokens, List<Integer> priorities) {
 		if (tokens.size() != priorities.size()) {
 			throw new IllegalStateException("Tokens & priorities does not match!");
 		}
@@ -249,6 +156,12 @@ public final class GraphExplorer {
 		}
 		String token = tokens.get(idx);
 		if (!operators.contains(token)) {
+			if (tokens.size() != 1) {
+				throw new IllegalArgumentException("Missing operator near: " + token);
+			}
+			if (token.contains("*") || token.contains("?")) {
+				return new WildcardPattern(token);
+			}
 			return new Literal(token);
 		}
 
@@ -257,8 +170,8 @@ public final class GraphExplorer {
 			List<String> tb = tokens.subList(idx + 1, tokens.size());
 			List<Integer> pa = priorities.subList(0, idx);
 			List<Integer> pb = priorities.subList(idx + 1, priorities.size());
-			Explorer a = getExplorer(ta, pa);
-			Explorer b = getExplorer(tb, pb);
+			GraphExplorer a = getExplorer(ta, pa);
+			GraphExplorer b = getExplorer(tb, pb);
 			if (".".equals(token)) {
 				return new Dot(a, b);
 			} else {
@@ -266,47 +179,23 @@ public final class GraphExplorer {
 			}
 		}
 
-		if ("*".equals(token) || "+".equals(token) || "$".equals(token)) {
+		if ("+".equals(token) || "$".equals(token)) {
 			if (idx != (tokens.size() - 1)) {
 				throw new IllegalArgumentException("Postfix unary operator must be the last token!");
 			}
 			List<String> ta = tokens.subList(0, idx);
 			List<Integer> pa = priorities.subList(0, idx);
-			Explorer a = getExplorer(ta, pa);
+			GraphExplorer a = getExplorer(ta, pa);
 			if ("$".equals(token)) {
 				return new Terminator(a);
 			} else {
-				return new Multi(a, token);
+				return new Multi(a);
 			}
 		}
 
 		throw new IllegalStateException("Unknown tokens: " + tokens);
 	}
 
-	public void explore(Object root, EntityExplorer explorer) {
-		impl.explore(root, explorer);
-	}
+	public abstract Set<?> explore(Collection<?> entities, EntityExplorer explorer);
 
-	public static void explore(Object object, Set<Object> exploredEntities, EntityExplorer explorer, EntityIntrospector introspector, PropertyFilter filter) {
-		if (object == null || exploredEntities.contains(object)) {
-			return;
-		}
-		exploredEntities.add(object);
-		Collection<String> properties = introspector.getProperties(object);
-		if (properties == null) {
-			return;
-		}
-		// iterate over all properties 
-		for (String property : properties) {
-			if (filter.test(object, property)) {
-				Collection<Object> explored = explorer.explore(object, property);
-				if (explored == null) {
-					continue;
-				}
-				for (Object e : explored) {
-					explore(e, exploredEntities, explorer, introspector, filter);
-				}
-			}
-		}
-	}
 }
