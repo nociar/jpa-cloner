@@ -160,7 +160,7 @@ public abstract class GraphExplorer {
 				throw new IllegalArgumentException("Missing operator near: " + token);
 			}
 			if (token.contains("*") || token.contains("?")) {
-				return new WildcardPattern(token);
+				return WildcardPattern.get(token);
 			}
 			return new Literal(token);
 		}

@@ -79,9 +79,9 @@ import sk.nociar.jpacloner.graphs.PropertyFilter;
  * <br/><br/>
  * Requirements:
  * <ul>
+ * <li>JPA entities must use <b>field access</b>, not property access.</li>
  * <li>JPA entities must <b>correctly</b> implement the {@link Object#equals(Object obj)} 
  * method and the {@link Object#hashCode()} method!</li>
- * <li>JPA entities must use <b>field access</b>, not property access.</li>
  * </ul>
  * 
  * @author Miroslav Nociar
@@ -255,7 +255,7 @@ public class JpaCloner extends AbstractJpaExplorer {
 	 * The cloned relations are specified by string patters. For description of patterns see the {@link GraphExplorer}.
 	 */
 	public static <T> T clone(T root, String... patterns) {
-		return clone(root, defaultPropertyFilter, patterns);
+		return clone(root, PropertyFilterFactory.getDefaultFilter(), patterns);
 	}
 
 	/**
@@ -263,7 +263,7 @@ public class JpaCloner extends AbstractJpaExplorer {
 	 * The cloned relations are specified by string patters. For description of patterns see the {@link GraphExplorer}.
 	 */
 	public static <T> List<T> clone(Collection<T> list, String... patterns) {
-		return clone(list, defaultPropertyFilter, patterns);
+		return clone(list, PropertyFilterFactory.getDefaultFilter(), patterns);
 	}
 
 	/**
@@ -271,7 +271,7 @@ public class JpaCloner extends AbstractJpaExplorer {
 	 * The cloned relations are specified by string patters. For description of patterns see the {@link GraphExplorer}.
 	 */
 	public static <T> Set<T> clone(Set<T> set, String... patterns) {
-		return clone(set, defaultPropertyFilter, patterns);
+		return clone(set, PropertyFilterFactory.getDefaultFilter(), patterns);
 	}
 
 	/**
@@ -290,7 +290,7 @@ public class JpaCloner extends AbstractJpaExplorer {
 	 * Copy all <b>basic properties</b> from the first entity to the second entity.
 	 */
 	public static <T, X extends T> void copy(T o1, X o2) {
-		copy(o1, o2, defaultPropertyFilter);
+		copy(o1, o2, PropertyFilterFactory.getDefaultFilter());
 	}
 	
 	/**

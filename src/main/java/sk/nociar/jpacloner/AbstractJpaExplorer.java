@@ -56,20 +56,10 @@ import sk.nociar.jpacloner.graphs.PropertyFilter;
  */
 public abstract class AbstractJpaExplorer implements EntityExplorer {
 	
-	/**
-	 * Default property filter.
-	 */
-	public static final PropertyFilter defaultPropertyFilter = new PropertyFilter() {
-		@Override
-		public boolean test(Object entity, String property) {
-			return true;
-		}
-	};
-
 	protected final PropertyFilter propertyFilter;
 
 	protected AbstractJpaExplorer() {
-		this(defaultPropertyFilter);
+		this(PropertyFilterFactory.getDefaultFilter());
 	}
 	
 	protected AbstractJpaExplorer(PropertyFilter propertyFilter) {
@@ -132,7 +122,7 @@ public abstract class AbstractJpaExplorer implements EntityExplorer {
 						continue;
 					}
 					String name = f.getName();
-					// note: this is called by hibernate anyway...
+					// note: this is called by Hibernate anyway...
 					f.setAccessible(true);
 					// add to maps
 					fields.put(name, f);

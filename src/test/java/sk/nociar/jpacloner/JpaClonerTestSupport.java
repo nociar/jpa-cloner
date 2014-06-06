@@ -8,6 +8,10 @@ import static org.junit.Assert.assertSame;
 import java.util.HashSet;
 import java.util.Set;
 
+import javax.persistence.Id;
+import javax.persistence.Transient;
+import javax.persistence.Version;
+
 import sk.nociar.jpacloner.entities.Bar;
 import sk.nociar.jpacloner.entities.BaseEntity;
 import sk.nociar.jpacloner.entities.Baz;
@@ -219,12 +223,8 @@ public abstract class JpaClonerTestSupport {
 	}
 	
 	public void testClone5() {
-		PropertyFilter filter = new PropertyFilter() {
-			@Override
-			public boolean test(Object entity, String property) {
-				return !"id".equals(property);
-			}
-		};
+		PropertyFilter filter = PropertyFilterFactory.getAnnotationFilter(Id.class, Version.class, Transient.class);
+		
 		String base = "((foo|baz).bar)";
 		Node clone = JpaCloner.clone(getOriginal(), filter, base, "(children.value.child)+." + base);
 		JpaExplorer jpaExplorer = JpaExplorer.doExplore(clone, allProperties);
