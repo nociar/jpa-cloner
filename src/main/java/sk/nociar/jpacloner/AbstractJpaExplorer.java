@@ -59,7 +59,7 @@ public abstract class AbstractJpaExplorer implements EntityExplorer {
 	protected final PropertyFilter propertyFilter;
 
 	protected AbstractJpaExplorer() {
-		this(PropertyFilterFactory.getDefaultFilter());
+		this(PropertyFilters.getDefaultFilter());
 	}
 	
 	protected AbstractJpaExplorer(PropertyFilter propertyFilter) {

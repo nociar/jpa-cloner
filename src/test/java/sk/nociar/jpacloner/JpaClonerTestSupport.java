@@ -223,7 +223,7 @@ public abstract class JpaClonerTestSupport {
 	}
 	
 	public void testClone5() {
-		PropertyFilter filter = PropertyFilterFactory.getAnnotationFilter(Id.class, Version.class, Transient.class);
+		PropertyFilter filter = PropertyFilters.getAnnotationFilter(Id.class, Version.class, Transient.class);
 		
 		String base = "((foo|baz).bar)";
 		Node clone = JpaCloner.clone(getOriginal(), filter, base, "(children.value.child)+." + base);

@@ -255,7 +255,7 @@ public class JpaCloner extends AbstractJpaExplorer {
 	 * The cloned relations are specified by string patters. For description of patterns see the {@link GraphExplorer}.
 	 */
 	public static <T> T clone(T root, String... patterns) {
-		return clone(root, PropertyFilterFactory.getDefaultFilter(), patterns);
+		return clone(root, PropertyFilters.getDefaultFilter(), patterns);
 	}
 
 	/**
@@ -263,7 +263,7 @@ public class JpaCloner extends AbstractJpaExplorer {
 	 * The cloned relations are specified by string patters. For description of patterns see the {@link GraphExplorer}.
 	 */
 	public static <T> List<T> clone(Collection<T> list, String... patterns) {
-		return clone(list, PropertyFilterFactory.getDefaultFilter(), patterns);
+		return clone(list, PropertyFilters.getDefaultFilter(), patterns);
 	}
 
 	/**
@@ -271,7 +271,7 @@ public class JpaCloner extends AbstractJpaExplorer {
 	 * The cloned relations are specified by string patters. For description of patterns see the {@link GraphExplorer}.
 	 */
 	public static <T> Set<T> clone(Set<T> set, String... patterns) {
-		return clone(set, PropertyFilterFactory.getDefaultFilter(), patterns);
+		return clone(set, PropertyFilters.getDefaultFilter(), patterns);
 	}
 
 	/**
@@ -280,8 +280,8 @@ public class JpaCloner extends AbstractJpaExplorer {
 	private static void copyProperties(Object o1, Object o2, JpaClassInfo classInfo, PropertyFilter propertyFilter) {
 		for (String property : classInfo.getProperties()) {
 			if (propertyFilter.test(o1, property)) {
-				Object value = AbstractJpaExplorer.getProperty(o1, property);
-				AbstractJpaExplorer.setProperty(o2, property, value);
+				Object value = getProperty(o1, property);
+				setProperty(o2, property, value);
 			}
 		}
 	}
@@ -290,14 +290,14 @@ public class JpaCloner extends AbstractJpaExplorer {
 	 * Copy all <b>basic properties</b> from the first entity to the second entity.
 	 */
 	public static <T, X extends T> void copy(T o1, X o2) {
-		copy(o1, o2, PropertyFilterFactory.getDefaultFilter());
+		copy(o1, o2, PropertyFilters.getDefaultFilter());
 	}
 	
 	/**
 	 * Copy filtered <b>basic properties</b> from the first entity to the second entity.
 	 */
 	public static <T, X extends T> void copy(T o1, X o2, PropertyFilter propertyFilter) {
-		JpaClassInfo classInfo = AbstractJpaExplorer.getClassInfo(o1);
+		JpaClassInfo classInfo = getClassInfo(o1);
 		if (classInfo != null) {
 			copyProperties(o1, o2, classInfo, propertyFilter);
 		}

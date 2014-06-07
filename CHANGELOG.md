@@ -1,5 +1,9 @@
 ## 1.0.1
+- breaking change: star "*" operator now means "zero or more characters"  
+- Wildcard support: star "*" and question mark "?" in property names   
 - use LinkedHashSet and LinkedHashMap for cloned entities
+- PropertyFilters class allows creation of annotation property filters 
+- basic properties can be copied without a getter 
 
 ## 1.0.0
 - project is exposed via the Maven Central Repository

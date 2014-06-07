@@ -18,9 +18,9 @@ import sk.nociar.jpacloner.graphs.PropertyFilter;
  * 
  * @author Miroslav Nociar
  */
-public class PropertyFilterFactory {
+public class PropertyFilters {
 	
-	private PropertyFilterFactory() {
+	private PropertyFilters() {
 		throw new UnsupportedOperationException();
 	}
 	
