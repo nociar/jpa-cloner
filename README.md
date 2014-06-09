@@ -22,6 +22,13 @@ Company clone3 = JpaCloner.clone(company, "department+.(boss|employees).address"
 PropertyFilter filter = PropertyFilters.getAnnotationFilter(Id.class, Transient.class);
 Company clone4 = JpaCloner.clone(company, filter, "*+");
 ```
+## Operators
+- Dot "." separates paths.
+- Plus "+" generates at least one preceding path.
+- Split "|" divides the path into two ways.
+- Terminator "$" ends the preceding path.
+- Parentheses "(", ")" groups the paths.
+- Wildcards "*", "?" in property names.
 ##Requirements
 - The JPA cloner is tested only against **Hibernate**.
 - Cloned entities must use JPA annotations and the _**field access**_, NOT the property access.
