@@ -12,6 +12,7 @@ Advanced control over the cloning process is supported via the _**PropertyFilter
     <version>1.0.1</version>
 </dependency>
 ```
+
 ## Example usage
 ```java
 Company company = entityManager.find(Company.class, companyId);
@@ -22,6 +23,7 @@ Company clone3 = JpaCloner.clone(company, "department+.(boss|employees).address"
 PropertyFilter filter = PropertyFilters.getAnnotationFilter(Id.class, Transient.class);
 Company clone4 = JpaCloner.clone(company, filter, "*+");
 ```
+
 ## Operators
 - Dot "." separates paths.
 - Plus "+" generates at least one preceding path.
@@ -29,6 +31,7 @@ Company clone4 = JpaCloner.clone(company, filter, "*+");
 - Terminator "$" ends the preceding path.
 - Parentheses "(", ")" groups the paths.
 - Wildcards "*", "?" in property names.
+
 ##Requirements
 - The JPA cloner is tested only against **Hibernate**.
 - Cloned entities must use JPA annotations and the _**field access**_, NOT the property access.
