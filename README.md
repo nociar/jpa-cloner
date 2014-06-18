@@ -17,20 +17,20 @@ Advanced control over the cloning process is supported via the _**PropertyFilter
 ```java
 Company company = entityManager.find(Company.class, companyId);
 Company clone1 = JpaCloner.clone(company, "partners.*");
-Company clone2 = JpaCloner.clone(company, "depa??ment");
-Company clone3 = JpaCloner.clone(company, "department+.(boss|employees).address");
+Company clone2 = JpaCloner.clone(company, "depa??ments");
+Company clone3 = JpaCloner.clone(company, "departments+.(boss|employees).address");
 // do not clone Id and Transient fields for the whole entity subgraph:
 PropertyFilter filter = PropertyFilters.getAnnotationFilter(Id.class, Transient.class);
 Company clone4 = JpaCloner.clone(company, filter, "*+");
 ```
 
 ## Operators
-- Dot "." separates paths.
-- Plus "+" generates at least one preceding path.
-- Split "|" divides the path into two ways.
-- Terminator "$" ends the preceding path.
+- Dot "." separates paths: **A.B.C**
+- Plus "+" generates at least one preceding path: **A.B+.C**
+- Split "|" divides the path into two ways: **A.(B|C).D**
+- Terminator "$" ends the preceding path: **A.(B$|C).D**
 - Parentheses "(", ")" groups the paths.
-- Wildcards "*", "?" in property names.
+- Wildcards "*", "?" in property names: **dumm?.pro*ties**
 
 ##Requirements
 - The JPA cloner is tested only against **Hibernate**.
