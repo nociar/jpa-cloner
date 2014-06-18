@@ -25,12 +25,12 @@ Company clone4 = JpaCloner.clone(company, filter, "*+");
 ```
 
 ## Operators
-- Dot "." separates paths: **A.B.C**
-- Plus "+" generates at least one preceding path: **A.B+.C**
-- Split "|" divides the path into two ways: **A.(B|C).D**
-- Terminator "$" ends the preceding path: **A.(B$|C).D**
+- Dot "." separates paths: A.B.C
+- Plus "+" generates at least one preceding path: A.B+.C
+- Split "|" divides the path into two ways: A.(B|C).D
+- Terminator "$" ends the preceding path: A.(B$|C).D
 - Parentheses "(", ")" groups the paths.
-- Wildcards "*", "?" in property names: **dumm?.pro*ties**
+- Wildcards "*", "?" in property names: dumm?.pro*ties
 
 ##Requirements
 - The JPA cloner is tested only against **Hibernate**.
