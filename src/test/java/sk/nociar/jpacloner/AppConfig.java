@@ -23,7 +23,7 @@ public class AppConfig {
 		emf.setDataSource(dataSource);
 		emf.setPackagesToScan("sk.nociar.jpacloner.entities");
 		HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
-		vendorAdapter.setDatabase(Database.HSQL);
+		vendorAdapter.setDatabase(Database.H2);
 		vendorAdapter.setGenerateDdl(false);
 		vendorAdapter.setShowSql(true);
 		emf.setJpaVendorAdapter(vendorAdapter);

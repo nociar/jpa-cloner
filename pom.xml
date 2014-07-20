@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.github.nociar</groupId>
 	<artifactId>jpa-cloner</artifactId>
-	<version>1.0.1</version>
+	<version>1.0.2-SNAPSHOT</version>
 	<packaging>jar</packaging>
 	<name>JPA Cloner</name>
 	<description>JPA Cloner allows cloning of JPA entity subgraphs.</description>
@@ -34,8 +34,9 @@
 	<properties>
 		<maven.compiler.target>1.6</maven.compiler.target>
 		<maven.compiler.source>1.6</maven.compiler.source>
-		<!-- NOTE spring is used only for testing -->
-		<spring.version>3.2.6.RELEASE</spring.version>
+		<!-- NOTE spring & hibernate dependencies are used only for testing -->
+		<spring.version>3.2.10.RELEASE</spring.version>
+		<hibernate.version>4.2.15.Final</hibernate.version>
 	</properties>
 
 	<dependencies>
@@ -80,14 +81,13 @@
 		<dependency>
 			<groupId>org.hibernate</groupId>
 			<artifactId>hibernate-entitymanager</artifactId>
-			<version>3.6.10.Final</version>
+			<version>${hibernate.version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>hsqldb</groupId>
-			<artifactId>hsqldb</artifactId>
-			<version>1.8.0.10</version>
-			<scope>test</scope>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<version>1.4.180</version>
 		</dependency>
 	</dependencies>
 
