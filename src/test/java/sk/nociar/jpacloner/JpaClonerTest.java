@@ -21,10 +21,15 @@ import org.springframework.transaction.annotation.Transactional;
 import sk.nociar.jpacloner.entities.Bar;
 import sk.nociar.jpacloner.entities.BaseEntity;
 import sk.nociar.jpacloner.entities.Baz;
+import sk.nociar.jpacloner.entities.Baz_;
 import sk.nociar.jpacloner.entities.Edge;
+import sk.nociar.jpacloner.entities.Edge_;
 import sk.nociar.jpacloner.entities.Foo;
+import sk.nociar.jpacloner.entities.Foo_;
 import sk.nociar.jpacloner.entities.Node;
+import sk.nociar.jpacloner.entities.Node_;
 import sk.nociar.jpacloner.entities.Point;
+import sk.nociar.jpacloner.selectors.Selector;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @ContextConfiguration(loader = AnnotationConfigContextLoader.class, 
@@ -146,6 +151,25 @@ public class JpaClonerTest {
 		support.testExplore();
 	}
 	
+	@Test
+	@Transactional
+	public void testSelector() {
+		Selector<Node> s = Selector.get(Node.class);
+		s.join(Node_.point);
+		s.join(Node_.foo).join(Foo_.bar);
+		s.join(Node_.baz).join(Baz_.bar);
+		s.join(Node_.children).join(Edge_.bar);
+		
+		Node cloned = JpaCloner.clone(support.getOriginal(), s.toString());
+		JpaExplorer e = JpaExplorer.doExplore(cloned, "*+");
+		JpaClonerTestSupport.assertCloned(e, Node.class, 1);
+		JpaClonerTestSupport.assertCloned(e, Point.class, 1);
+		JpaClonerTestSupport.assertCloned(e, Foo.class, 1);
+		JpaClonerTestSupport.assertCloned(e, Baz.class, 1);
+		JpaClonerTestSupport.assertCloned(e, Bar.class, 2);
+		JpaClonerTestSupport.assertCloned(e, Edge.class, 2);
+	}
+
 	@Test
 	@Transactional
 	public void testCloneList() {

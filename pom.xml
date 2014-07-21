@@ -30,7 +30,7 @@
 		<developerConnection>scm:git:git@github.com:nociar/jpa-cloner.git</developerConnection>
 		<url>git@github.com:nociar/jpa-cloner.git</url>
 	</scm>
-	
+
 	<properties>
 		<maven.compiler.target>1.6</maven.compiler.target>
 		<maven.compiler.source>1.6</maven.compiler.source>
@@ -88,6 +88,7 @@
 			<groupId>com.h2database</groupId>
 			<artifactId>h2</artifactId>
 			<version>1.4.180</version>
+			<scope>test</scope>
 		</dependency>
 	</dependencies>
 
@@ -116,6 +117,32 @@
 						</goals>
 					</execution>
 				</executions>
+			</plugin>
+
+			<plugin>
+				<groupId>org.bsc.maven</groupId>
+				<artifactId>maven-processor-plugin</artifactId>
+				<version>2.2.4</version>
+				<executions>
+					<execution>
+						<id>process-test</id>
+						<goals>
+							<goal>process-test</goal>
+						</goals>
+						<phase>generate-test-sources</phase>
+						<configuration>
+							<!-- source output directory -->
+							<outputDirectory>target/metamodel</outputDirectory>
+						</configuration>
+					</execution>
+				</executions>
+				<dependencies>
+					<dependency>
+						<groupId>org.hibernate</groupId>
+						<artifactId>hibernate-jpamodelgen</artifactId>
+						<version>4.3.5.Final</version>
+					</dependency>
+				</dependencies>
 			</plugin>
 		</plugins>
 	</build>
