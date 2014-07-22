@@ -18,7 +18,10 @@
 package sk.nociar.jpacloner.graphs;
 
 /**
- * Simple property filter.
+ * Simple property filter. <br/>
+ * <b>NOTE</b> this interface could be replaced by 
+ * <a href="http://docs.oracle.com/javase/8/docs/api/java/util/function/BiPredicate.html">BiPredicate</a>
+ * after the Java 8 will be adopted.
  * 
  * @author Miroslav Nociar
  */
