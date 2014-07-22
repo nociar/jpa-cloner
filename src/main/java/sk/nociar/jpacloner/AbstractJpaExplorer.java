@@ -21,6 +21,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.unmodifiableList;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -126,33 +127,41 @@ public abstract class AbstractJpaExplorer implements EntityExplorer {
 					f.setAccessible(true);
 					// add to maps
 					fields.put(name, f);
-					if (!isRelation(f)) {
+					// process annotations
+					final ManyToOne manyToOne = f.getAnnotation(ManyToOne.class);
+					final OneToOne oneToOne = f.getAnnotation(OneToOne.class);
+					final OneToMany oneToMany = f.getAnnotation(OneToMany.class);
+					final ManyToMany manyToMany = f.getAnnotation(ManyToMany.class);
+					final Embedded embedded = f.getAnnotation(Embedded.class);
+					final EmbeddedId embeddedId = f.getAnnotation(EmbeddedId.class);
+					final ElementCollection elementCollection = f.getAnnotation(ElementCollection.class);
+					
+					if (allNull(manyToOne, oneToOne, oneToMany, manyToMany, embedded, embeddedId, elementCollection)) {
+						// basic field
 						properties.add(name);
+						continue;
+					}
+					// relation/embedded field
+					if (allNull(oneToMany, manyToMany)) {
+						relations.addLast(name);
 					} else {
-						OneToOne oneToOne = f.getAnnotation(OneToOne.class);
-						String mappedName = null;
-						if (oneToOne != null) {
-							// OneToOne - add the relation to the end
-							relations.addLast(name);
-							mappedName = oneToOne.mappedBy();
+						// OneToMany/ManyToMany - putting in front may reduce DB queries
+						relations.addFirst(name);
+					}
+					// handle mappedBy for OneToOne/OneToMany 
+					String mappedName = null;
+					if (oneToOne != null) {
+						mappedName = oneToOne.mappedBy();
+					} else if (oneToMany != null) {
+						mappedName = oneToMany.mappedBy();
+					}
+					if (mappedName != null && !mappedName.trim().isEmpty()) {
+						mappedName = mappedName.trim();
+						// NOTE: the mappedBy attribute may be used in @Embeddable
+						if (mappedName.contains(".")) {
+							mappedBy.put(name, unmodifiableList(asList(mappedName.split("\\."))));
 						} else {
-							// OneToMany/ManyToMany - insert the relation to the beginning
-							// NOTE this may significantly decrease the number of queries during the cloning! 
-							relations.addFirst(name);
-							OneToMany oneToMany = f.getAnnotation(OneToMany.class);
-							if (oneToMany != null) {
-								mappedName = oneToMany.mappedBy();
-							}
-						}
-						if (mappedName != null && !mappedName.trim().isEmpty()) {
-							// OneToMany/OneToOne - handle the mappedBy attribute 
-							mappedName = mappedName.trim();
-							// NOTE: the mappedBy attribute may be used in @Embeddable
-							if (mappedName.contains(".")) {
-								mappedBy.put(name, unmodifiableList(asList(mappedName.split("\\."))));
-							} else {
-								mappedBy.put(name, singletonList(mappedName));
-							}
+							mappedBy.put(name, singletonList(mappedName));
 						}
 					}
 				}
@@ -161,16 +170,15 @@ public abstract class AbstractJpaExplorer implements EntityExplorer {
 			this.relations = unmodifiableList(new ArrayList<String>(relations));
 		}
 		
-		private boolean isRelation(Field f) {
-			return f.getAnnotation(ManyToOne.class) != null ||
-					f.getAnnotation(OneToOne.class) != null ||
-					f.getAnnotation(OneToMany.class) != null ||
-					f.getAnnotation(ManyToMany.class) != null ||
-					f.getAnnotation(Embedded.class) != null ||
-					f.getAnnotation(EmbeddedId.class) != null ||
-					f.getAnnotation(ElementCollection.class) != null;
+		private boolean allNull(Annotation... annotations) {
+			for (Annotation a : annotations) {
+				if (a != null) {
+					return false;
+				}
+			}
+			return true;
 		}
-
+		
 		public Constructor<?> getConstructor() {
 			return constructor;
 		}

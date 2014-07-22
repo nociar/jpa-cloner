@@ -11,14 +11,16 @@ import javax.persistence.metamodel.SetAttribute;
 import javax.persistence.metamodel.SingularAttribute;
 
 /**
- * Type-safe property selector based on metamodel classes needed for 
- * type-safe Criteria queries as defined by JPA 2.<br/>
+ * Type-safe property selector based on metamodel classes needed for type-safe
+ * Criteria queries as defined by JPA 2. 
+ * See <a href='http://hibernate.org/orm/tooling/'>Hibernate Metamodel Generator</a>
+ * for more details. <br/>
  * <b>NOTE:</b> this is an experimental feature
  * 
  * @author Miroslav Nociar
  *
- * @param <X> type of entity
- * @see <a href="http://hibernate.org/orm/tooling/">Hibernate Metamodel Generator</a> for more details.
+ * @param <X>
+ *            type of entity
  */
 public class Selector<X> {
 	

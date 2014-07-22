@@ -117,7 +117,7 @@ public class JpaClonerTest {
 	
 	@Test
 	@Transactional
-	public void testClone() {
+	public void testClone1() {
 		support.testClone1();
 	}
 

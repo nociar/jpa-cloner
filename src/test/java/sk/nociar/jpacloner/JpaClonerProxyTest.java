@@ -6,12 +6,11 @@ import org.junit.Test;
 
 import sk.nociar.jpacloner.entities.Bar;
 import sk.nociar.jpacloner.entities.Baz;
+import sk.nociar.jpacloner.entities.DummyEntity;
 import sk.nociar.jpacloner.entities.Edge;
 import sk.nociar.jpacloner.entities.Foo;
 import sk.nociar.jpacloner.entities.Node;
 import sk.nociar.jpacloner.entities.Point;
-import sk.nociar.jpacloner.entities.DummyEntity;
-import sk.nociar.jpacloner.graphs.GraphExplorer;
 import sk.nociar.jpacloner.graphs.PropertyFilter;
 
 public class JpaClonerProxyTest {
@@ -83,7 +82,7 @@ public class JpaClonerProxyTest {
 	}
 
 	@Test
-	public void testClone() {
+	public void testClone1() {
 		support.testClone1();
 	}
 
@@ -144,39 +143,6 @@ public class JpaClonerProxyTest {
 	@Test
 	public void testNoException() {
 		JpaCloner.clone(new NodeProxy(), "bar", "xxx", "(yyy)");
-		GraphExplorer.get("children.*");
-		GraphExplorer.get("chil*n");
-		;
-	}
-
-	@Test(expected = RuntimeException.class)
-	public void testException1() {
-		GraphExplorer.get("(children");
-	}
-
-	@Test(expected = RuntimeException.class)
-	public void testException2() {
-		GraphExplorer.get("children)");
-	}
-	
-	@Test(expected = RuntimeException.class)
-	public void testException3() {
-		GraphExplorer.get(".children");
-	}
-
-	@Test(expected = RuntimeException.class)
-	public void testException4() {
-		GraphExplorer.get("children.");
-	}
-
-	@Test(expected = RuntimeException.class)
-	public void testException5() {
-		GraphExplorer.get("$");
-	}
-	
-	@Test(expected = RuntimeException.class)
-	public void testException6() {
-		GraphExplorer.get("(aaa)*");
 	}
 	
 }
