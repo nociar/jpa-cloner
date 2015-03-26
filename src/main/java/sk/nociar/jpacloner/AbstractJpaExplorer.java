@@ -22,6 +22,7 @@ import static java.util.Collections.singletonList;
 import static java.util.Collections.unmodifiableList;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -30,6 +31,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -37,11 +39,13 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import javax.persistence.AccessType;
 import javax.persistence.ElementCollection;
 import javax.persistence.Embeddable;
 import javax.persistence.Embedded;
 import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
+import javax.persistence.Id;
 import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
@@ -51,7 +55,7 @@ import sk.nociar.jpacloner.graphs.EntityExplorer;
 import sk.nociar.jpacloner.graphs.PropertyFilter;
 
 /**
- * Simple explorer of JPA entities. JPA entities must use <b>field access</b>, not property access.
+ * Simple explorer of JPA entities.
  * 
  * @author Miroslav Nociar
  */
@@ -74,6 +78,7 @@ public abstract class AbstractJpaExplorer implements EntityExplorer {
 	 */
 	public static class JpaClassInfo {
 		private final Class<?> jpaClass;
+		private final AccessType accessType;
 		private final Constructor<?> constructor;
 		private final List<String> properties;
 		private final List<String> relations;
@@ -84,6 +89,7 @@ public abstract class AbstractJpaExplorer implements EntityExplorer {
 		
 		private JpaClassInfo(final Class<?> clazz) {
 			this.jpaClass = clazz;
+			AccessType accessType1 = null;
 			try {
 				// find default constructor
 				constructor = clazz.getDeclaredConstructor();
@@ -91,6 +97,9 @@ public abstract class AbstractJpaExplorer implements EntityExplorer {
 			} catch (NoSuchMethodException e) {
 				throw new IllegalStateException("Unable to find default constructor for class: " + clazz, e);
 			}
+			// fields
+			List<String> properties = new ArrayList<String>();
+			LinkedList<String> relations = new LinkedList<String>();
 			// getters & setters
 			for (Method m : clazz.getMethods()) {
 				if (Modifier.isStatic(m.getModifiers())) {
@@ -113,61 +122,95 @@ public abstract class AbstractJpaExplorer implements EntityExplorer {
 					propertyName = Character.toLowerCase(propertyName.charAt(0)) + propertyName.substring(1);
 					map.put(propertyName, m);
 				}
+
+				if (map == getters) {
+					// process annotations on getters
+					final Id id = m.getAnnotation(Id.class);
+					// detect property access
+					if (id != null) {
+						accessType1 = AccessType.PROPERTY;
+					}
+					processAnnotations(m, propertyName, properties, relations);
+				}
 			}
-			// fields
-			List<String> properties = new ArrayList<String>();
-			LinkedList<String> relations = new LinkedList<String>();
-			for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
-				for (Field f : c.getDeclaredFields()) {
-					if (Modifier.isStatic(f.getModifiers()) || Modifier.isFinal(f.getModifiers())) {
-						continue;
-					}
-					String name = f.getName();
-					// note: this is called by Hibernate anyway...
-					f.setAccessible(true);
-					// add to maps
-					fields.put(name, f);
-					// process annotations
-					final ManyToOne manyToOne = f.getAnnotation(ManyToOne.class);
-					final OneToOne oneToOne = f.getAnnotation(OneToOne.class);
-					final OneToMany oneToMany = f.getAnnotation(OneToMany.class);
-					final ManyToMany manyToMany = f.getAnnotation(ManyToMany.class);
-					final Embedded embedded = f.getAnnotation(Embedded.class);
-					final EmbeddedId embeddedId = f.getAnnotation(EmbeddedId.class);
-					final ElementCollection elementCollection = f.getAnnotation(ElementCollection.class);
-					
-					if (allNull(manyToOne, oneToOne, oneToMany, manyToMany, embedded, embeddedId, elementCollection)) {
-						// basic field
-						properties.add(name);
-						continue;
-					}
-					// relation/embedded field
-					if (allNull(oneToMany, manyToMany)) {
-						relations.addLast(name);
-					} else {
-						// OneToMany/ManyToMany - putting in front may reduce DB queries
-						relations.addFirst(name);
-					}
-					// handle mappedBy for OneToOne/OneToMany 
-					String mappedName = null;
-					if (oneToOne != null) {
-						mappedName = oneToOne.mappedBy();
-					} else if (oneToMany != null) {
-						mappedName = oneToMany.mappedBy();
-					}
-					if (mappedName != null && !mappedName.trim().isEmpty()) {
-						mappedName = mappedName.trim();
-						// NOTE: the mappedBy attribute may be used in @Embeddable
-						if (mappedName.contains(".")) {
-							mappedBy.put(name, unmodifiableList(asList(mappedName.split("\\."))));
-						} else {
-							mappedBy.put(name, singletonList(mappedName));
-						}
+			// remove those without setters if property access detected
+			if (accessType1 == AccessType.PROPERTY) {
+				final Iterator<String> iterator = properties.iterator();
+				while (iterator.hasNext()) {
+					if (setters.get(iterator.next()) == null) {
+						iterator.remove();
 					}
 				}
 			}
+			// ignore if property access detected
+			if (accessType1 == null) {
+				// ignore all properties and relations collected from getters
+				properties.clear();
+				relations.clear();
+				for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
+					for (Field f : c.getDeclaredFields()) {
+						if (Modifier.isStatic(f.getModifiers()) || Modifier.isFinal(f.getModifiers())) {
+							continue;
+						}
+						String name = f.getName();
+						// note: this is called by Hibernate anyway...
+						f.setAccessible(true);
+						// add to maps
+						fields.put(name, f);
+						// process annotations
+						final Id id = f.getAnnotation(Id.class);
+						// detect field access
+						if (id != null) {
+							accessType1 = AccessType.FIELD;
+						}
+						processAnnotations(f, name, properties, relations);
+					}
+				}
+			}
+			this.accessType = accessType1;
 			this.properties = unmodifiableList(properties);
 			this.relations = unmodifiableList(new ArrayList<String>(relations));
+		}
+
+		private void processAnnotations(final AccessibleObject a, final String propertyName, final List<String> properties,
+										final LinkedList<String> relations) {
+			final ManyToOne manyToOne = a.getAnnotation(ManyToOne.class);
+			final OneToOne oneToOne = a.getAnnotation(OneToOne.class);
+			final OneToMany oneToMany = a.getAnnotation(OneToMany.class);
+			final ManyToMany manyToMany = a.getAnnotation(ManyToMany.class);
+			final Embedded embedded = a.getAnnotation(Embedded.class);
+			final EmbeddedId embeddedId = a.getAnnotation(EmbeddedId.class);
+			final ElementCollection elementCollection = a.getAnnotation(ElementCollection.class);
+
+
+			if (allNull(manyToOne, oneToOne, oneToMany, manyToMany, embedded, embeddedId, elementCollection)) {
+				// basic field
+				properties.add(propertyName);
+				return;
+			}
+			// relation/embedded field
+			if (allNull(oneToMany, manyToMany)) {
+				relations.addLast(propertyName);
+			} else {
+				// OneToMany/ManyToMany - putting in front may reduce DB queries
+				relations.addFirst(propertyName);
+			}
+			// handle mappedBy for OneToOne/OneToMany
+			String mappedName = null;
+			if (oneToOne != null) {
+				mappedName = oneToOne.mappedBy();
+			} else if (oneToMany != null) {
+				mappedName = oneToMany.mappedBy();
+			}
+			if (mappedName != null && !mappedName.trim().isEmpty()) {
+				mappedName = mappedName.trim();
+				// NOTE: the mappedBy attribute may be used in @Embeddable
+				if (mappedName.contains(".")) {
+					mappedBy.put(propertyName, unmodifiableList(asList(mappedName.split("\\."))));
+				} else {
+					mappedBy.put(propertyName, singletonList(mappedName));
+				}
+			}
 		}
 		
 		private boolean allNull(Annotation... annotations) {
@@ -181,6 +224,10 @@ public abstract class AbstractJpaExplorer implements EntityExplorer {
 		
 		public Constructor<?> getConstructor() {
 			return constructor;
+		}
+
+		public AccessType getAccessType() {
+			return accessType;
 		}
 
 		public List<String> getProperties() {

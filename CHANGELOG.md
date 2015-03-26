@@ -1,3 +1,6 @@
+## 1.0.2-SNAPSHOT
+- EXPERIMENTAL property access support
+
 ## 1.0.1
 - breaking change: star "*" operator now means "zero or more characters"  
 - Wildcard support: star "*" and question mark "?" in property names   

@@ -33,7 +33,8 @@ Company clone4 = JpaCloner.clone(company, filter, "*+");
 
 ##Requirements
 - The JPA cloner is tested only against **Hibernate**.
-- Cloned entities must use JPA annotations and the **field access**, NOT the property access.
 - Cloned entities must **correctly** implement equals() and hashCode().
+
+Property access support is **EXPERIMENTAL**.
 
 Please refer to the **JpaCloner** class for more description.

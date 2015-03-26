@@ -79,7 +79,6 @@ import sk.nociar.jpacloner.graphs.PropertyFilter;
  * <br/><br/>
  * Requirements:
  * <ul>
- * <li>JPA entities must use <b>field access</b>, not property access.</li>
  * <li>JPA entities must <b>correctly</b> implement the {@link Object#equals(Object obj)} 
  * method and the {@link Object#hashCode()} method!</li>
  * </ul>
@@ -197,7 +196,7 @@ public class JpaCloner extends AbstractJpaExplorer {
 	}
 
 	/**
-	 * Clones the passed JPA entity. The property filter controls the cloning of <b>basic properties</b>. 
+	 * Clones the passed JPA entity. The property filter controls the cloning of <b>basic properties</b>.
 	 * The cloned relations are specified by string patters. For description of patterns see the {@link GraphExplorer}.
 	 */
 	public static <T> T clone(T root, PropertyFilter propertyFilter, String... patterns) {
@@ -213,7 +212,7 @@ public class JpaCloner extends AbstractJpaExplorer {
 	}
 
 	/**
-	 * Clones the list of JPA entities. The property filter controls the cloning of <b>basic properties</b>. 
+	 * Clones the list of JPA entities. The property filter controls the cloning of <b>basic properties</b>.
 	 * The cloned relations are specified by string patters. For description of patterns see the {@link GraphExplorer}.
 	 */
 	public static <T> List<T> clone(Collection<T> list, PropertyFilter propertyFilter, String... patterns) {
@@ -232,7 +231,7 @@ public class JpaCloner extends AbstractJpaExplorer {
 	}
 
 	/**
-	 * Clones the set of JPA entities. The property filter controls the cloning of <b>basic properties</b>. 
+	 * Clones the set of JPA entities. The property filter controls the cloning of <b>basic properties</b>.
 	 * The cloned relations are specified by string patters. For description of patterns see the {@link GraphExplorer}.
 	 */
 	public static <T> Set<T> clone(Set<T> set, PropertyFilter propertyFilter, String... patterns) {
