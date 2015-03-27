@@ -13,6 +13,50 @@ import javax.persistence.Id;
 public class TestBothAccess {
 
 	@Test
+	public void testAccessField() {
+		final AccessField t1 = new AccessField();
+		t1.setField(1);
+
+		final AccessField t2 = JpaCloner.clone(t1,
+				PropertyFilters.getAnnotationFilter(Id.class), "*+");
+
+		Assert.assertEquals((Integer) 2, t2.getField());
+	}
+
+	@Test
+	public void testAccessProperty() {
+		final AccessProperty t1 = new AccessProperty();
+		t1.setField(1);
+
+		final AccessProperty t2 = JpaCloner.clone(t1,
+				PropertyFilters.getAnnotationFilter(Id.class), "*+");
+
+		Assert.assertEquals((Integer) 4, t2.getField());
+	}
+
+	@Test
+	public void testEmbeddableField() {
+		final Embeddables t1 = new Embeddables();
+		t1.getField().setField(1);
+
+		final Embeddables t2 = JpaCloner.clone(t1,
+				PropertyFilters.getAnnotationFilter(Id.class), "*+");
+
+		Assert.assertEquals((Integer) 2, t2.getField().getField());
+	}
+
+	@Test
+	public void testEmbeddableProperty() {
+		final Embeddables t1 = new Embeddables();
+		t1.getProperty().setField(1);
+
+		final Embeddables t2 = JpaCloner.clone(t1,
+				PropertyFilters.getAnnotationFilter(Id.class), "*+");
+
+		Assert.assertEquals((Integer) 4, t2.getProperty().getField());
+	}
+
+	@Test
 	public void testFieldAccess() throws NoSuchFieldException {
 
 		final EntityField t1 = new EntityField();

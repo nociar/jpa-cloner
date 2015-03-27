@@ -36,5 +36,6 @@ Company clone4 = JpaCloner.clone(company, filter, "*+");
 - Cloned entities must **correctly** implement equals() and hashCode().
 
 Property access support is **EXPERIMENTAL**.
+Default access type for non-JPA classes is PROPERTY.
 
 Please refer to the **JpaCloner** class for more description.

@@ -39,6 +39,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import javax.persistence.Access;
 import javax.persistence.AccessType;
 import javax.persistence.ElementCollection;
 import javax.persistence.Embeddable;
@@ -89,7 +90,7 @@ public abstract class AbstractJpaExplorer implements EntityExplorer {
 		
 		private JpaClassInfo(final Class<?> clazz) {
 			this.jpaClass = clazz;
-			AccessType accessType1 = null;
+			this.accessType = determineAccessType(clazz);
 			try {
 				// find default constructor
 				constructor = clazz.getDeclaredConstructor();
@@ -123,18 +124,13 @@ public abstract class AbstractJpaExplorer implements EntityExplorer {
 					map.put(propertyName, m);
 				}
 
-				if (map == getters) {
+				if (map == getters && accessType == AccessType.PROPERTY) {
 					// process annotations on getters
-					final Id id = m.getAnnotation(Id.class);
-					// detect property access
-					if (id != null) {
-						accessType1 = AccessType.PROPERTY;
-					}
 					processAnnotations(m, propertyName, properties, relations);
 				}
 			}
 			// remove those without setters if property access detected
-			if (accessType1 == AccessType.PROPERTY) {
+			if (accessType == AccessType.PROPERTY) {
 				final Iterator<String> iterator = properties.iterator();
 				while (iterator.hasNext()) {
 					if (setters.get(iterator.next()) == null) {
@@ -143,10 +139,7 @@ public abstract class AbstractJpaExplorer implements EntityExplorer {
 				}
 			}
 			// ignore if property access detected
-			if (accessType1 == null) {
-				// ignore all properties and relations collected from getters
-				properties.clear();
-				relations.clear();
+			if (accessType == AccessType.FIELD) {
 				for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
 					for (Field f : c.getDeclaredFields()) {
 						if (Modifier.isStatic(f.getModifiers()) || Modifier.isFinal(f.getModifiers())) {
@@ -158,18 +151,52 @@ public abstract class AbstractJpaExplorer implements EntityExplorer {
 						// add to maps
 						fields.put(name, f);
 						// process annotations
-						final Id id = f.getAnnotation(Id.class);
-						// detect field access
-						if (id != null) {
-							accessType1 = AccessType.FIELD;
-						}
 						processAnnotations(f, name, properties, relations);
 					}
 				}
 			}
-			this.accessType = accessType1;
 			this.properties = unmodifiableList(properties);
 			this.relations = unmodifiableList(new ArrayList<String>(relations));
+		}
+
+		/**
+		 * Scans class for JPA annotations and determines the access type. If no JPA access type can be figured,
+		 * defaults to AccessType.PROPERTY.
+		 *
+		 * @param clazz
+		 * @return @Nonnull
+		 */
+		private AccessType determineAccessType(final Class<?> clazz) {
+			// check class level @Access
+			final Access access = clazz.getAnnotation(Access.class);
+			if (access != null) {
+				return access.value();
+			}
+			// scan getters
+			for (Method m : clazz.getMethods()) {
+				if (Modifier.isStatic(m.getModifiers())) {
+					continue;
+				}
+				String methodName = m.getName();
+				if (methodName.startsWith("get") && methodName.length() > 3 && m.getParameterTypes().length == 0) {
+					if (m.getAnnotation(Id.class) != null) {
+						return AccessType.PROPERTY;
+					}
+				}
+			}
+			// scan fields
+			for (Class<?> c = clazz; c != null; c = c.getSuperclass()) {
+				for (Field f : c.getDeclaredFields()) {
+					if (Modifier.isStatic(f.getModifiers()) || Modifier.isFinal(f.getModifiers())) {
+						continue;
+					}
+					if (f.getAnnotation(Id.class) != null) {
+						return AccessType.FIELD;
+					}
+				}
+			}
+			// no JPA found, default
+			return AccessType.PROPERTY;
 		}
 
 		private void processAnnotations(final AccessibleObject a, final String propertyName, final List<String> properties,
@@ -291,44 +318,58 @@ public abstract class AbstractJpaExplorer implements EntityExplorer {
 		}
 		return null;
 	}
-	
+
 	public static Object getProperty(Object object, String property) {
 		JpaClassInfo info = getClassInfo(object);
-		Method getter = info.getGetter(property);
-		if (getter != null) {
-			try {
-				return getter.invoke(object);
-			} catch (Exception e) {
-				throw new RuntimeException("Invocation problem object: " + object + ", property: " + property, e);
-			}
-		} else {
-			// no getter, access the field directly
-			Field field = info.getField(property);
-			try {
-				return field.get(object);
-			} catch (IllegalAccessException e) {
-				throw new RuntimeException(e);
-			}
+		switch (info.accessType) {
+			case PROPERTY:
+				Method getter = info.getGetter(property);
+				if (getter == null) {
+					throw new RuntimeException("No getter while AccessType.PROPERTY: " + object + ", property: " + property);
+				}
+				try {
+					return getter.invoke(object);
+				} catch (Exception e) {
+					throw new RuntimeException("Invocation problem object: " + object + ", property: " + property, e);
+				}
+			case FIELD:
+				//  access the field directly
+				Field field = info.getField(property);
+				try {
+					return field.get(object);
+				} catch (IllegalAccessException e) {
+					throw new RuntimeException(e);
+				}
+			default:
+				throw new RuntimeException("Unimplemented: " + info.accessType);
 		}
 	}
 
 	public static void setProperty(Object object, String property, Object value) {
 		JpaClassInfo info = getClassInfo(object);
-		Method setter = info.getSetter(property);
-		if (setter != null) {
-			try {
-				setter.invoke(object, value);
-			} catch (Exception e) {
-				throw new RuntimeException("Invocation problem object: " + object + ", property: " + property, e);
-			}
-		} else {
-			// no setter, access the field directly
-			Field field = info.getField(property);
-			try {
-				field.set(object, value);
-			} catch (IllegalAccessException e) {
-				throw new RuntimeException(e);
-			}
+		switch (info.accessType) {
+			case PROPERTY:
+				Method setter = info.getSetter(property);
+				if (setter == null) {
+					throw new RuntimeException("No setter while AccessType.PROPERTY: " + object + ", property: " + property);
+				}
+				try {
+					setter.invoke(object, value);
+				} catch (Exception e) {
+					throw new RuntimeException("Invocation problem object: " + object + ", property: " + property, e);
+				}
+				break;
+			case FIELD:
+				// no setter, access the field directly
+				Field field = info.getField(property);
+				try {
+					field.set(object, value);
+				} catch (IllegalAccessException e) {
+					throw new RuntimeException(e);
+				}
+				break;
+			default:
+				throw new RuntimeException("Unimplemented: " + info.accessType);
 		}
 	}
 
@@ -371,7 +412,7 @@ public abstract class AbstractJpaExplorer implements EntityExplorer {
 		if (info == null || !info.getRelations().contains(property)) {
 			return null;
 		}
-		
+
 		Object value = getProperty(entity, property);
 
 		if (value == null) {
