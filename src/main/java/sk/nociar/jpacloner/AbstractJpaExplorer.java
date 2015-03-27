@@ -320,57 +320,66 @@ public abstract class AbstractJpaExplorer implements EntityExplorer {
 		return null;
 	}
 
+	/**
+	 * This code intentionally ignores info.getAccessType and always uses the getter and falls back on field access only
+	 * if there is no getter.
+	 * <p/>
+	 * Rationale:<br>
+	 * No JPA specific way of de-proxying, thus if the field is lazyly initialized, reflection on the field
+	 * would return null.
+	 *
+	 * @param object
+	 * @param property
+	 * @return
+	 */
 	public static Object getProperty(Object object, String property) {
 		JpaClassInfo info = getClassInfo(object);
-		switch (info.accessType) {
-			case PROPERTY:
-				Method getter = info.getGetter(property);
-				if (getter == null) {
-					throw new RuntimeException("No getter while AccessType.PROPERTY: " + object + ", property: " + property);
-				}
-				try {
-					return getter.invoke(object);
-				} catch (Exception e) {
-					throw new RuntimeException("Invocation problem object: " + object + ", property: " + property, e);
-				}
-			case FIELD:
-				//  access the field directly
-				Field field = info.getField(property);
-				try {
-					return field.get(object);
-				} catch (IllegalAccessException e) {
-					throw new RuntimeException(e);
-				}
-			default:
-				throw new RuntimeException("Unimplemented: " + info.accessType);
+		Method getter = info.getGetter(property);
+		if (getter != null) {
+			try {
+				return getter.invoke(object);
+			} catch (Exception e) {
+				throw new RuntimeException("Invocation problem object: " + object + ", property: " + property, e);
+			}
+		} else {
+			// no getter, access the field directly
+			Field field = info.getField(property);
+			try {
+				return field.get(object);
+			} catch (IllegalAccessException e) {
+				throw new RuntimeException(e);
+			}
 		}
 	}
 
+	/**
+	 * This code intentionally ignores info.getAccessType and always uses the setter and falls back on field access only
+	 * if there is no setter.
+	 * <p/>
+	 * Rationale:<br>
+	 * No JPA specific way of de-proxying, thus if the field is lazyly initialized, reflection on the field
+	 * might not be processed by the JPA provider.
+	 * @param object
+	 * @param property
+	 * @param value
+	 */
 	public static void setProperty(Object object, String property, Object value) {
 		JpaClassInfo info = getClassInfo(object);
-		switch (info.accessType) {
-			case PROPERTY:
-				Method setter = info.getSetter(property);
-				if (setter == null) {
-					throw new RuntimeException("No setter while AccessType.PROPERTY: " + object + ", property: " + property);
-				}
-				try {
-					setter.invoke(object, value);
-				} catch (Exception e) {
-					throw new RuntimeException("Invocation problem object: " + object + ", property: " + property, e);
-				}
-				break;
-			case FIELD:
-				// no setter, access the field directly
-				Field field = info.getField(property);
-				try {
-					field.set(object, value);
-				} catch (IllegalAccessException e) {
-					throw new RuntimeException(e);
-				}
-				break;
-			default:
-				throw new RuntimeException("Unimplemented: " + info.accessType);
+		Method setter = info.getSetter(property);
+		if (setter != null) {
+			try {
+				setter.invoke(object, value);
+			} catch (Exception e) {
+				throw new RuntimeException("Invocation problem object: " + object + ", property: " + property, e);
+			}
+		} else {
+			// no setter, access the field directly
+			Field field = info.getField(property);
+			try {
+				field.set(object, value);
+			} catch (IllegalAccessException e) {
+				throw new RuntimeException(e);
+			}
 		}
 	}
 

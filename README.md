@@ -35,7 +35,11 @@ Company clone4 = JpaCloner.clone(company, filter, "*+");
 - The JPA cloner is tested only against **Hibernate**.
 - Cloned entities must **correctly** implement equals() and hashCode().
 
-Property access support is **EXPERIMENTAL**.
-Default access type for non-JPA classes is PROPERTY.
+##Notes
+- Property access support is **EXPERIMENTAL**.
+- Default access type for non-JPA classes is PROPERTY.
+- reading / writing entity values do not strictly adhere AccessType, as without a JPA compatible de-proxying mechanism
+the reflective field access would not work properly on lazy fields. Thus the library first tries to use the
+getters / setters if they do exist, falls back to field access if they don't, and hopes the best in the latter case.
 
 Please refer to the **JpaCloner** class for more description.
