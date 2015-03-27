@@ -178,7 +178,8 @@ public abstract class AbstractJpaExplorer implements EntityExplorer {
 					continue;
 				}
 				String methodName = m.getName();
-				if (methodName.startsWith("get") && methodName.length() > 3 && m.getParameterTypes().length == 0) {
+				if ((methodName.startsWith("get") && methodName.length() > 3 && m.getParameterTypes().length == 0)
+						|| (methodName.startsWith("is") && methodName.length() > 2 && m.getParameterTypes().length == 0)) {
 					if (m.getAnnotation(Id.class) != null) {
 						return AccessType.PROPERTY;
 					}
