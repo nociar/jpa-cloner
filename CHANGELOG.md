@@ -1,5 +1,7 @@
-## 1.0.2-SNAPSHOT
-- EXPERIMENTAL property access support
+## 1.0.2
+- Apache License, Version 2.0
+- property access support
+- refactoring and performance improvements
 
 ## 1.0.1
 - breaking change: star "*" operator now means "zero or more characters"  

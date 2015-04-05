@@ -45,14 +45,14 @@ public class JpaExplorer extends AbstractJpaExplorer {
 	}
 	
 	@Override
-	protected void explore(Object entity, String property, Collection<?> collection) {
+	protected void explore(Object entity, JpaPropertyInfo property, Collection<?> collection) {
 		for (Object object : collection) {
 			addJpaObject(object);
 		}
 	}
 
 	@Override
-	protected void explore(Object entity, String property, Map<?, ?> map) {
+	protected void explore(Object entity, JpaPropertyInfo property, Map<?, ?> map) {
 		for (Map.Entry<?, ?> entry : map.entrySet()) {
 			addJpaObject(entry.getKey());
 			addJpaObject(entry.getValue());
@@ -60,7 +60,7 @@ public class JpaExplorer extends AbstractJpaExplorer {
 	}
 
 	@Override
-	protected void explore(Object entity, String property, Object value) {
+	protected void explore(Object entity, JpaPropertyInfo property, Object value) {
 		addJpaObject(value);
 	}
 

@@ -1,16 +1,11 @@
 package sk.nociar.jpacloner;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import sk.nociar.jpacloner.AbstractJpaExplorer.JpaClassInfo;
 import sk.nociar.jpacloner.graphs.PropertyFilter;
-
-import javax.persistence.AccessType;
 
 /**
  * Factory of various {@link PropertyFilter}s. Example:<br/>
@@ -49,21 +44,15 @@ public class PropertyFilters {
 
 		@Override
 		public boolean test(Object entity, String property) {
-			JpaClassInfo info = AbstractJpaExplorer.getClassInfo(entity);
-			if (info != null) {
-				if(info.getAccessType() == AccessType.PROPERTY) {
-					Method getter = info.getGetter(property);
-					if (getter != null && getter.getAnnotation(clazz) != null) {
-						return false;
-					}
-				} else {
-					Field field = info.getField(property);
-					if (field != null && field.getAnnotation(clazz) != null) {
-						return false;
-					}
-				}
+			JpaClassInfo classInfo = AbstractJpaExplorer.getClassInfo(entity);
+			if (classInfo == null) {
+				return true;
 			}
-			return true;
+			JpaPropertyInfo propertyInfo = classInfo.getPropertyInfo(property);
+			if (propertyInfo == null) {
+				return true;
+			}
+			return propertyInfo.getAccessibleObject().getAnnotation(clazz) == null;
 		}
 	}
 	

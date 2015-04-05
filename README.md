@@ -21,6 +21,13 @@ Company clone3 = JpaCloner.clone(company, "departments+.(boss|employees).address
 // do not clone @Id and @Transient fields for the whole entity subgraph:
 PropertyFilter filter = PropertyFilters.getAnnotationFilter(Id.class, Transient.class);
 Company clone4 = JpaCloner.clone(company, filter, "*+");
+// custom property filter
+PropertyFilter myFilter = new PropertyFilter() {
+    public boolean test(Object entity, String property) {
+        return !"ignoredProperty".equals(property);
+    }
+};
+Company clone5 = JpaCloner.clone(company, myFilter, "*+");
 ```
 
 ## Operators
@@ -29,17 +36,10 @@ Company clone4 = JpaCloner.clone(company, filter, "*+");
 - Split "|" divides the path into two ways: A.(B|C).D
 - Terminator "$" ends the preceding path: A.(B$|C).D
 - Parentheses "(", ")" groups the paths.
-- Wildcards "*", "?" in property names: dumm?.pro*ties
+- Wildcards "\*", "?" in property names: dumm?.pro\*ties
 
-##Requirements
+## Requirements
 - The JPA cloner is tested only against **Hibernate**.
 - Cloned entities must **correctly** implement equals() and hashCode().
-
-##Notes
-- Property access support is **EXPERIMENTAL**.
-- Default access type for non-JPA classes is PROPERTY.
-- reading / writing entity values do not strictly adhere AccessType, as without a JPA compatible de-proxying mechanism
-the reflective field access would not work properly on lazy fields. Thus the library first tries to use the
-getters / setters if they do exist, falls back to field access if they don't, and hopes the best in the latter case.
 
 Please refer to the **JpaCloner** class for more description.

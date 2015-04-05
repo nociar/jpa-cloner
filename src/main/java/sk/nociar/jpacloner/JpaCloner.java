@@ -99,7 +99,7 @@ public class JpaCloner extends AbstractJpaExplorer {
 	
 	@Override
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	protected void explore(Object entity, String property, Collection<?> collection) {
+	protected void explore(Object entity, JpaPropertyInfo propertyInfo, Collection<?> collection) {
 		Collection clonedCollection;
 		if (collection instanceof SortedSet) {
 			// create a tree set with the same comparator (may be null)
@@ -116,9 +116,9 @@ public class JpaCloner extends AbstractJpaExplorer {
 		for (Object o : collection) {
 			clonedCollection.add(getClone(o));
 		}
-		setProperty(getClone(entity), property, clonedCollection);
+		propertyInfo.getPropertyWriter().set(getClone(entity), clonedCollection);
 		// handle mappedBy
-		List<String> mappedBy = getClassInfo(entity).getMappedBy(property);
+		List<String> mappedBy = propertyInfo.getMappedBy();
 		if (mappedBy != null) {
 			for (Object value : collection) {
 				handleMappedBy(value, mappedBy, 0);
@@ -128,7 +128,7 @@ public class JpaCloner extends AbstractJpaExplorer {
 
 	@Override
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	protected void explore(Object entity, String property, Map<?, ?> map) {
+	protected void explore(Object entity, JpaPropertyInfo propertyInfo, Map<?, ?> map) {
 		Map clonedMap;
 		if (map instanceof SortedMap) {
 			clonedMap = new TreeMap(((SortedMap) map).comparator());
@@ -138,9 +138,9 @@ public class JpaCloner extends AbstractJpaExplorer {
 		for (Entry entry : map.entrySet()) {
 			clonedMap.put(getClone(entry.getKey()), getClone(entry.getValue()));
 		}
-		setProperty(getClone(entity), property, clonedMap);
+		propertyInfo.getPropertyWriter().set(getClone(entity), clonedMap);
 		// handle mappedBy
-		List<String> mappedBy = getClassInfo(entity).getMappedBy(property);
+		List<String> mappedBy = propertyInfo.getMappedBy();
 		if (mappedBy != null) {
 			for (Object value : map.values()) {
 				handleMappedBy(value, mappedBy, 0);
@@ -149,10 +149,10 @@ public class JpaCloner extends AbstractJpaExplorer {
 	}
 
 	@Override
-	protected void explore(Object entity, String property, Object value) {
-		setProperty(getClone(entity), property, getClone(value));
+	protected void explore(Object entity, JpaPropertyInfo propertyInfo, Object value) {
+		propertyInfo.getPropertyWriter().set(getClone(entity), getClone(value));
 		// handle mappedBy
-		List<String> mappedBy = getClassInfo(entity).getMappedBy(property);
+		List<String> mappedBy = propertyInfo.getMappedBy();
 		if (mappedBy != null) {
 			handleMappedBy(value, mappedBy, 0);
 		}
@@ -279,8 +279,9 @@ public class JpaCloner extends AbstractJpaExplorer {
 	private static void copyProperties(Object o1, Object o2, JpaClassInfo classInfo, PropertyFilter propertyFilter) {
 		for (String property : classInfo.getProperties()) {
 			if (propertyFilter.test(o1, property)) {
-				Object value = getProperty(o1, property);
-				setProperty(o2, property, value);
+				JpaPropertyInfo propertyInfo = classInfo.getPropertyInfo(property);
+				Object value = propertyInfo.getPropertyReader().get(o1);
+				propertyInfo.getPropertyWriter().set(o2, value);
 			}
 		}
 	}
