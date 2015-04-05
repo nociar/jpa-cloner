@@ -8,7 +8,7 @@ Advanced control over the cloning process is supported via the **PropertyFilter*
 <dependency>
     <groupId>com.github.nociar</groupId>
     <artifactId>jpa-cloner</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
 </dependency>
 ```
 
