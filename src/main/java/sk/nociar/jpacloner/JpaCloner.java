@@ -2,7 +2,6 @@ package sk.nociar.jpacloner;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -68,147 +67,133 @@ import sk.nociar.jpacloner.graphs.PropertyFilter;
  * 
  * @author Miroslav Nociar
  */
-public class JpaCloner extends AbstractJpaExplorer {
-
-	private final Map<Object, Object> originalToClone = new HashMap<Object, Object>();
-	
-	public JpaCloner() {
-		super();
+public final class JpaCloner {
+	private JpaCloner() {
+		throw new UnsupportedOperationException();
 	}
 	
-	public JpaCloner(PropertyFilter propertyFilter) {
-		super(propertyFilter);
-	}
-	
-	@Override
-	@SuppressWarnings({ "unchecked", "rawtypes" })
-	protected void explore(Object entity, JpaPropertyInfo propertyInfo, Collection<?> collection) {
-		Collection clonedCollection;
-		if (collection instanceof SortedSet) {
-			// create a tree set with the same comparator (may be null)
-			clonedCollection = new TreeSet(((SortedSet) collection).comparator());
-		} else if (collection instanceof Set) {
-			// create a hash set
-			clonedCollection = new LinkedHashSet();
-		} else if (collection instanceof List) {
-			// create an array list
-			clonedCollection = new ArrayList(collection.size());
-		} else {
-			throw new IllegalArgumentException("Unsupported collection class: " + collection.getClass());
+	/**
+	 * Clones all explored entities and relations.
+	 * @param explorer
+	 * @return map of original -&gt; clone
+	 */
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	private static Map<Object, Object> clone(JpaExplorer explorer, PropertyFilter propertyFilter) {
+		Map<Object, Object> originalToClone = new HashMap<Object, Object>(explorer.entities.size());
+		// clone each explored JPA entity
+		for (Object original : explorer.entities.keySet()) {
+			JpaClassInfo classInfo = JpaClassInfo.get(original.getClass());
+			Object clone;
+			try {
+				clone = classInfo.getConstructor().newInstance();
+			} catch (Exception e) {
+				throw new IllegalStateException("Unable to clone: " + original, e);
+			}
+			// copy basic properties
+			copyBasicProperties(original, clone, classInfo, propertyFilter);
+			// put in the cache
+			originalToClone.put(original, clone);
 		}
-		for (Object o : collection) {
-			clonedCollection.add(getClone(o));
-		}
-		propertyInfo.getPropertyWriter().set(getClone(entity), clonedCollection);
-		// handle mappedBy
-		List<String> mappedBy = propertyInfo.getMappedBy();
-		if (mappedBy != null) {
-			for (Object value : collection) {
-				handleMappedBy(value, mappedBy, 0);
+		// clone @ManyToOne, @OneToOne, @Embedded, @EmbeddedId
+		for (Map.Entry<Object, Set<String>> entry : explorer.entities.entrySet()) {
+			Object original = entry.getKey();
+			Set<String> relations = entry.getValue();
+			Object clone = originalToClone.get(original);
+			JpaClassInfo classInfo = JpaClassInfo.get(original.getClass());
+			for (String relation : relations) {
+				JpaPropertyInfo propertyInfo = classInfo.getPropertyInfo(relation);
+				if (propertyInfo.isSingular()) {
+					Object originalValue = propertyInfo.getValue(original);
+					Object clonedValue = originalToClone.get(originalValue);
+					propertyInfo.setValue(clone, clonedValue);
+				}
 			}
 		}
-	}
-
-	@Override
-	@SuppressWarnings({ "unchecked", "rawtypes" })
-	protected void explore(Object entity, JpaPropertyInfo propertyInfo, Map<?, ?> map) {
-		Map clonedMap;
-		if (map instanceof SortedMap) {
-			clonedMap = new TreeMap(((SortedMap) map).comparator());
-		} else {
-			clonedMap = new LinkedHashMap();
-		}
-		for (Entry entry : map.entrySet()) {
-			clonedMap.put(getClone(entry.getKey()), getClone(entry.getValue()));
-		}
-		propertyInfo.getPropertyWriter().set(getClone(entity), clonedMap);
-		// handle mappedBy
-		List<String> mappedBy = propertyInfo.getMappedBy();
-		if (mappedBy != null) {
-			for (Object value : map.values()) {
-				handleMappedBy(value, mappedBy, 0);
+		// clone @OneToMany, @ManyToMany, @ElementCollection
+		for (Map.Entry<Object, Set<String>> entry : explorer.entities.entrySet()) {
+			Object original = entry.getKey();
+			Set<String> relations = entry.getValue();
+			Object clone = originalToClone.get(original);
+			JpaClassInfo classInfo = JpaClassInfo.get(original.getClass());
+			for (String relation : relations) {
+				JpaPropertyInfo propertyInfo = classInfo.getPropertyInfo(relation);
+				if (propertyInfo.isSingular()) {
+					continue;
+				}
+				Object originalValue = propertyInfo.getValue(original);
+				if (originalValue instanceof Collection) {
+					Collection originalCollection = (Collection) originalValue;
+					Collection clonedCollection;
+					if (originalCollection instanceof SortedSet) {
+						// TreeSet with the same Comparator (can be null)
+						clonedCollection = new TreeSet(((SortedSet) originalValue).comparator());
+					} else if (originalCollection instanceof Set) {
+						// HashSet
+						clonedCollection = new LinkedHashSet(originalCollection.size());
+					} else if (originalCollection instanceof List) {
+						// ArrayList
+						clonedCollection = new ArrayList(originalCollection.size());
+					} else {
+						throw new IllegalStateException("Unsupported collection type: " + originalValue.getClass());
+					}
+					for (Object o : (Collection) originalValue) {
+						Object c = originalToClone.get(o);
+						if (c == null) {
+							c = o;
+						}
+						clonedCollection.add(c);
+					}
+					propertyInfo.setValue(clone, clonedCollection);
+				} else if (originalValue instanceof Map) {
+					Map originalMap = (Map) originalValue;
+					Map clonedMap;
+					if (originalMap instanceof SortedMap) {
+						clonedMap = new TreeMap(((SortedMap) originalValue).comparator());
+					} else {
+						clonedMap = new LinkedHashMap(originalMap.size());
+					}
+					for (Object o : originalMap.entrySet()) {
+						Entry e = (Entry) o;
+						Object key = e.getKey();
+						Object value = e.getValue();
+						Object key2 = originalToClone.get(key);
+						Object value2 = originalToClone.get(value);
+						if (key2 == null) {
+							key2 = key;
+						}
+						if (value2 == null) {
+							value2 = value;
+						}
+						clonedMap.put(key2, value2);
+					}
+					propertyInfo.setValue(clone, clonedMap);
+				}
 			}
 		}
-	}
-
-	@Override
-	protected void explore(Object entity, JpaPropertyInfo propertyInfo, Object value) {
-		propertyInfo.getPropertyWriter().set(getClone(entity), getClone(value));
-		// handle mappedBy
-		List<String> mappedBy = propertyInfo.getMappedBy();
-		if (mappedBy != null) {
-			handleMappedBy(value, mappedBy, 0);
-		}
+		return originalToClone;
 	}
 	
-	private void handleMappedBy(Object o, List<String> mappedBy, int idx) {
-		Collection<?> explored = explore(o, mappedBy.get(idx));
-		idx++;
-		if (explored != null && idx < mappedBy.size()) {
-			for (Object e : explored) {
-				handleMappedBy(e, mappedBy, idx);
-			}
-		}
-	}
-
-	@SuppressWarnings("unchecked")
-	public <T> T getClone(T original) {
-		if (original == null) {
-			return null;
-		}
-		// check the cache first
-		Object clone = originalToClone.get(original);
-		if (clone != null) {
-			return (T) clone;
-		}
-		JpaClassInfo classInfo = getClassInfo(original);
-		if (classInfo == null) {
-			// not a JPA class, return the original object
-			return original;
-		}
-		try {
-			clone = classInfo.getConstructor().newInstance();
-		} catch (Exception e) {
-			throw new IllegalStateException("Unable to clone: " + original, e);
-		}
-		// copy basic properties
-		copyProperties(original, clone, classInfo, propertyFilter);
-		// put in the cache
-		originalToClone.put(original, clone);
-		return (T) clone;
-	}
-
 	/**
 	 * Clones the passed JPA entity. The property filter controls the cloning of <b>basic properties</b>.
 	 * The cloned relations are specified by string patters. For description of patterns see the {@link GraphExplorer}.
 	 */
+	@SuppressWarnings("unchecked")
 	public static <T> T clone(T root, PropertyFilter propertyFilter, String... patterns) {
-		JpaCloner cloner = new JpaCloner(propertyFilter);
-		if (patterns != null) {
-			for (String pattern : patterns) {
-				GraphExplorer explorer = GraphExplorer.get(pattern);
-				explorer.explore(Collections.singleton(root), cloner);
-			}
-		}
-
-		return cloner.getClone(root);
+		JpaExplorer explorer = JpaExplorer.doExplore(root, propertyFilter, patterns);
+		return (T) clone(explorer, propertyFilter).get(root);
 	}
 
 	/**
 	 * Clones the list of JPA entities. The property filter controls the cloning of <b>basic properties</b>.
 	 * The cloned relations are specified by string patters. For description of patterns see the {@link GraphExplorer}.
 	 */
+	@SuppressWarnings("unchecked")
 	public static <T> List<T> clone(Collection<T> list, PropertyFilter propertyFilter, String... patterns) {
 		List<T> clonedList = new ArrayList<T>(list.size());
-		JpaCloner jpaCloner = new JpaCloner(propertyFilter);
-		if (patterns != null) {
-			for (String pattern : patterns) {
-				GraphExplorer explorer = GraphExplorer.get(pattern);
-				explorer.explore(list, jpaCloner);
-			}
-		}
+		JpaExplorer explorer = JpaExplorer.doExplore(list, propertyFilter, patterns);
+		Map<Object, Object> originalToClone = clone(explorer, propertyFilter);
 		for (T original : list) {
-			clonedList.add(jpaCloner.getClone(original));
+			clonedList.add((T) originalToClone.get(original));
 		}
 		return clonedList;
 	}
@@ -217,17 +202,13 @@ public class JpaCloner extends AbstractJpaExplorer {
 	 * Clones the set of JPA entities. The property filter controls the cloning of <b>basic properties</b>.
 	 * The cloned relations are specified by string patters. For description of patterns see the {@link GraphExplorer}.
 	 */
+	@SuppressWarnings("unchecked")
 	public static <T> Set<T> clone(Set<T> set, PropertyFilter propertyFilter, String... patterns) {
 		Set<T> clonedSet = new HashSet<T>();
-		JpaCloner jpaCloner = new JpaCloner(propertyFilter);
-		if (patterns != null) {
-			for (String pattern : patterns) {
-				GraphExplorer explorer = GraphExplorer.get(pattern);
-				explorer.explore(set, jpaCloner);
-			}
-		}
+		JpaExplorer explorer = JpaExplorer.doExplore(set, propertyFilter, patterns);
+		Map<Object, Object> originalToClone = clone(explorer, propertyFilter);
 		for (T original : set) {
-			clonedSet.add(jpaCloner.getClone(original));
+			clonedSet.add((T) originalToClone.get(original));
 		}
 		return clonedSet;
 	}
@@ -259,12 +240,12 @@ public class JpaCloner extends AbstractJpaExplorer {
 	/**
 	 * Copy properties (not relations) from o1 to o2.
 	 */
-	private static void copyProperties(Object o1, Object o2, JpaClassInfo classInfo, PropertyFilter propertyFilter) {
-		for (String property : classInfo.getProperties()) {
+	private static void copyBasicProperties(Object o1, Object o2, JpaClassInfo classInfo, PropertyFilter propertyFilter) {
+		for (String property : classInfo.getBaseProperties()) {
 			if (propertyFilter.test(o1, property)) {
 				JpaPropertyInfo propertyInfo = classInfo.getPropertyInfo(property);
-				Object value = propertyInfo.getPropertyReader().get(o1);
-				propertyInfo.getPropertyWriter().set(o2, value);
+				Object value = propertyInfo.getValue(o1);
+				propertyInfo.setValue(o2, value);
 			}
 		}
 	}
@@ -280,10 +261,8 @@ public class JpaCloner extends AbstractJpaExplorer {
 	 * Copy filtered <b>basic properties</b> from the first entity to the second entity.
 	 */
 	public static <T, X extends T> void copy(T o1, X o2, PropertyFilter propertyFilter) {
-		JpaClassInfo classInfo = getClassInfo(o1);
-		if (classInfo != null) {
-			copyProperties(o1, o2, classInfo, propertyFilter);
-		}
+		JpaClassInfo classInfo = JpaClassInfo.get(o1.getClass());
+		copyBasicProperties(o1, o2, classInfo, propertyFilter);
 	}
 
 }

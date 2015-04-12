@@ -44,7 +44,7 @@ public class JpaClassInfo {
 	private final Map<String, Method> setters = new HashMap<String, Method>();
 	/** Holds all JPA properties (basic and relations) */
 	private final Map<String, JpaPropertyInfo> jpaProperties = new HashMap<String, JpaPropertyInfo>();
-	private final List<String> properties;
+	private final List<String> baseProperties;
 	private final List<String> relations;
 	
 	private static final ConcurrentMap<Class<?>, JpaClassInfo> classInfo = new ConcurrentHashMap<Class<?>, JpaClassInfo>();
@@ -178,7 +178,7 @@ public class JpaClassInfo {
 			}
 		}
 		
-		this.properties = unmodifiableList(properties);
+		this.baseProperties = unmodifiableList(properties);
 		this.relations = unmodifiableList(new ArrayList<String>(relations));
 	}
 
@@ -227,8 +227,8 @@ public class JpaClassInfo {
 		return constructor;
 	}
 
-	public List<String> getProperties() {
-		return properties;
+	public List<String> getBaseProperties() {
+		return baseProperties;
 	}
 
 	public List<String> getRelations() {

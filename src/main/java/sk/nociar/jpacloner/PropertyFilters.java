@@ -44,7 +44,10 @@ public class PropertyFilters {
 
 		@Override
 		public boolean test(Object entity, String property) {
-			JpaClassInfo classInfo = AbstractJpaExplorer.getClassInfo(entity);
+			if (entity == null) {
+				return true;
+			}
+			JpaClassInfo classInfo = JpaClassInfo.get(entity.getClass());
 			if (classInfo == null) {
 				return true;
 			}

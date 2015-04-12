@@ -28,6 +28,7 @@ public class JpaPropertyInfo {
 	private final PropertyWriter propertyWriter;
 	private final List<String> mappedBy;
 	private final boolean isBasic;
+	private final boolean isSingular;
 	
 	public JpaPropertyInfo(AccessibleObject accessibleObject, PropertyReader propertyReader, PropertyWriter propertyWriter) {
 		this.accessibleObject = accessibleObject;
@@ -45,10 +46,12 @@ public class JpaPropertyInfo {
 		if (allNull(manyToOne, oneToOne, oneToMany, manyToMany, embedded, embeddedId, elementCollection)) {
 			// basic field
 			isBasic = true;
+			isSingular = true;
 			mappedBy = null;
 		} else {
 			// relation/embedded field
 			isBasic = false;
+			isSingular = allNull(oneToMany, manyToMany, elementCollection);
 			// handle mappedBy for @OneToOne or @OneToMany
 			// NOTE handling of mappedBy for @ManyToMany is omitted intentionally
 			String mappedName = null;
@@ -83,15 +86,15 @@ public class JpaPropertyInfo {
 	public AccessibleObject getAccessibleObject() {
 		return accessibleObject;
 	}
-
-	public PropertyReader getPropertyReader() {
-		return propertyReader;
-	}
-
-	public PropertyWriter getPropertyWriter() {
-		return propertyWriter;
+	
+	public Object getValue(Object instance) {
+		return propertyReader.get(instance);
 	}
 	
+	public void setValue(Object instance, Object value) {
+		propertyWriter.set(instance, value);
+	}
+
 	public List<String> getMappedBy() {
 		return mappedBy;
 	}
@@ -100,7 +103,7 @@ public class JpaPropertyInfo {
 		return isBasic;
 	}
 	
-	public boolean isRelation() {
-		return !isBasic;
+	public boolean isSingular() {
+		return isSingular;
 	}
 }
