@@ -136,7 +136,7 @@ public final class JpaCloner {
 					} else {
 						throw new IllegalStateException("Unsupported collection type: " + originalValue.getClass());
 					}
-					for (Object o : (Collection) originalValue) {
+					for (Object o : originalCollection) {
 						Object c = originalToClone.get(o);
 						if (c == null) {
 							c = o;

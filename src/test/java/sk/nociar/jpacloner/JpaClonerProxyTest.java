@@ -1,11 +1,19 @@
 package sk.nociar.jpacloner;
 
+import java.util.HashSet;
+import java.util.Set;
+
+import javax.persistence.Transient;
+
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import sk.nociar.jpacloner.entities.A;
+import sk.nociar.jpacloner.entities.B;
 import sk.nociar.jpacloner.entities.Bar;
 import sk.nociar.jpacloner.entities.Baz;
+import sk.nociar.jpacloner.entities.C;
 import sk.nociar.jpacloner.entities.DummyEntity;
 import sk.nociar.jpacloner.entities.Edge;
 import sk.nociar.jpacloner.entities.Foo;
@@ -143,4 +151,40 @@ public class JpaClonerProxyTest {
 		JpaCloner.clone(new NodeProxy(), "bar", "xxx", "(yyy)");
 	}
 	
+	@Test
+	public void testCloningOrder() {
+		A a = new A();
+		B b1 = new B();
+		B b2 = new B();
+		B b3 = new B();
+		C c = new C();
+		// IDs
+		a.setId(1);
+		b1.setId(1);
+		b2.setId(2);
+		b3.setId(3);
+		c.setId(1);
+		// @ManyToOne
+		b1.setA(a);
+		b2.setA(a);
+		b3.setA(a);
+		b1.setC(c);
+		b2.setC(c);
+		b3.setC(c);
+		// @OneToMany
+		Set<B> set = new HashSet<B>();
+		set.add(b1);
+		set.add(b2);
+		set.add(b3);
+		a.setSet(set);
+		
+		// clone (ignore transient fields)
+		A a_clone = JpaCloner.clone(a, PropertyFilters.getAnnotationFilter(Transient.class), "set.c");
+		// verify set of B object
+		Assert.assertEquals(a_clone.getSet().size(), 3);
+		for (B b : a_clone.getSet()) {
+			Assert.assertTrue(b.counter_a < b.counter_hashcode);
+			Assert.assertTrue(b.counter_c < b.counter_hashcode);
+		}
+	}
 }
