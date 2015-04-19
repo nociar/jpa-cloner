@@ -36,7 +36,7 @@
 		<maven.compiler.source>1.6</maven.compiler.source>
 		<!-- NOTE spring & hibernate dependencies are used only for testing -->
 		<spring.version>3.2.10.RELEASE</spring.version>
-		<hibernate.version>4.2.15.Final</hibernate.version>
+		<hibernate.version>4.2.19.Final</hibernate.version>
 	</properties>
 
 	<dependencies>
@@ -115,6 +115,9 @@
 						<goals>
 							<goal>jar</goal>
 						</goals>
+						<configuration>
+							<additionalparam>-Xdoclint:none</additionalparam>
+						</configuration>
 					</execution>
 				</executions>
 			</plugin>

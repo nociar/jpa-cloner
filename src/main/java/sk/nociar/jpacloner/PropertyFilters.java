@@ -5,8 +5,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import sk.nociar.jpacloner.graphs.PropertyFilter;
-
 /**
  * Factory of various {@link PropertyFilter}s. Example:<br/>
  * <pre>

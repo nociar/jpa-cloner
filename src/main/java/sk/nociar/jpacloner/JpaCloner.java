@@ -19,7 +19,6 @@ import javax.persistence.Embeddable;
 import javax.persistence.Entity;
 
 import sk.nociar.jpacloner.graphs.GraphExplorer;
-import sk.nociar.jpacloner.graphs.PropertyFilter;
 
 /**
  * JpaCloner provides cloning of JPA entity subgraphs. Cloned entities will be instantiated as <b>raw classes</b>.

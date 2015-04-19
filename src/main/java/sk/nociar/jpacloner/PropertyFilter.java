@@ -1,4 +1,4 @@
-package sk.nociar.jpacloner.graphs;
+package sk.nociar.jpacloner;
 
 /**
  * Simple property filter. <br/>

@@ -14,7 +14,6 @@ import java.util.Set;
 
 import sk.nociar.jpacloner.graphs.EntityExplorer;
 import sk.nociar.jpacloner.graphs.GraphExplorer;
-import sk.nociar.jpacloner.graphs.PropertyFilter;
 
 /**
  * Generic explorer of JPA entities. Explored entities can be accessed by the method {@link #getEntities(Class)}.

@@ -1,6 +1,10 @@
+## 1.0.3
+- breaking change: PropertyFilter interface moved to the root package sk.nociar.jpacloner  
+- \*ToMany relations are cloned after \*ToOne relations
+
 ## 1.0.2
 - Apache License, Version 2.0
-- property access support
+- property access support - Thanks go to Gabor Nagy
 - refactoring and performance improvements
 
 ## 1.0.1

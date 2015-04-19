@@ -8,14 +8,14 @@ Advanced control over the cloning process is supported via the **PropertyFilter*
 <dependency>
     <groupId>com.github.nociar</groupId>
     <artifactId>jpa-cloner</artifactId>
-    <version>1.0.2</version>
+    <version>1.0.3</version>
 </dependency>
 ```
 
 ## Example usage
 ```java
 Company company = entityManager.find(Company.class, companyId);
-Company clone1 = JpaCloner.clone(company, "partners.*");
+Company clone1 = JpaCloner.clone(company, "departments.*");
 Company clone2 = JpaCloner.clone(company, "depa??ments");
 Company clone3 = JpaCloner.clone(company, "departments+.(boss|employees).address");
 // do not clone @Id and @Transient fields for the whole entity subgraph:

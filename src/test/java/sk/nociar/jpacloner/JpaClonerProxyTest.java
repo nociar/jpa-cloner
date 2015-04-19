@@ -19,7 +19,6 @@ import sk.nociar.jpacloner.entities.Edge;
 import sk.nociar.jpacloner.entities.Foo;
 import sk.nociar.jpacloner.entities.Node;
 import sk.nociar.jpacloner.entities.Point;
-import sk.nociar.jpacloner.graphs.PropertyFilter;
 
 public class JpaClonerProxyTest {
 	
